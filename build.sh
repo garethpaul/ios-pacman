@@ -13,4 +13,4 @@ function ci_build() {
                build
 }
 
-ci_build "iPhone 5"
+ci_build "iPhone 6"
