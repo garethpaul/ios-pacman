@@ -33,6 +33,11 @@ Contribution rules:
 
 ## Security
 
+Canonical security policy and reporting:
+
+- [`SECURITY.md`](SECURITY.md)
+
+
 This is a local game sample. Future networking, accounts, or analytics should be
 opt-in and documented.
 
