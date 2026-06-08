@@ -36,7 +36,7 @@ Contribution rules:
 This is a local game sample. Future networking, accounts, or analytics should be
 opt-in and documented.
 
-## What We Will Not Merge For Now
+## What We Will Not Merge (For Now)
 
 - Asset replacements without purpose or provenance
 - Analytics or tracking features
