@@ -1,5 +1,8 @@
 ## iOS Pacman Vision
 
+This document explains the current state and direction of the project.
+Project overview and developer docs: [`README.md`](README.md)
+
 iOS Pacman is an Objective-C iOS game sample inspired by classic maze gameplay.
 
 The repository is useful as a compact older iOS game project with image assets,
