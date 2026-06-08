@@ -26,6 +26,11 @@ xcuserdata/
 *.ipa
 *.dSYM.zip
 *.dSYM
+.DS_Store
+*.local.xcconfig
+*.secrets.xcconfig
+.env
+.env.*
 
 
 # CocoaPods

@@ -19,10 +19,11 @@ Priority:
 - Keep the screenshot and README aligned with app behavior
 - Maintain the build script and Xcode project structure
 - Avoid broad rewrites without gameplay verification
+- Keep `scripts/check-baseline.py` passing for shell syntax, asset/XIB
+  references, Xcode metadata, Objective-C source inventory, and local-only gameplay
 
 Next priorities:
 
-- Add README setup and Xcode version notes
 - Add manual gameplay verification steps
 - Modernize Objective-C/project settings only in a dedicated pass
 - Document asset provenance for future replacements
@@ -42,6 +43,11 @@ Canonical security policy and reporting:
 
 This is a local game sample. Future networking, accounts, or analytics should be
 opt-in and documented.
+
+Current baseline: `make check` runs `scripts/check-baseline.py` without Xcode.
+It verifies `build.sh`, plist/XIB/scheme XML, image resources, Xcode project
+references, and local-only gameplay with no debug logging, network, analytics,
+upload, or persistence behavior.
 
 ## What We Will Not Merge (For Now)
 

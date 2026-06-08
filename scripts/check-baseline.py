@@ -1,0 +1,210 @@
+#!/usr/bin/env python3
+from pathlib import Path
+import plistlib
+import re
+import shutil
+import subprocess
+import sys
+import xml.etree.ElementTree as ET
+
+
+ROOT = Path(__file__).resolve().parents[1]
+PLAN = ROOT / "docs/plans/2026-06-08-objective-c-game-baseline.md"
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+
+
+def require(condition, message, failures):
+    if not condition:
+        failures.append(message)
+
+
+def read(relative_path):
+    return (ROOT / relative_path).read_text(encoding="utf-8", errors="replace")
+
+
+def strip_c_line_comments(text):
+    return "\n".join(line.split("//", 1)[0] for line in text.splitlines())
+
+
+def parse_xml(relative_path, failures):
+    try:
+        ET.parse(str(ROOT / relative_path))
+    except ET.ParseError as error:
+        failures.append(f"{relative_path} is not well-formed XML: {error}")
+
+
+def parse_plist(relative_path, failures):
+    try:
+        with (ROOT / relative_path).open("rb") as file:
+            return plistlib.load(file)
+    except Exception as error:
+        failures.append(f"{relative_path} is not a readable plist: {error}")
+        return {}
+
+
+def check_png(relative_path, failures):
+    path = ROOT / relative_path
+    try:
+        with path.open("rb") as file:
+            signature = file.read(len(PNG_SIGNATURE))
+        require(signature == PNG_SIGNATURE, f"{relative_path} must be a PNG image", failures)
+        require(path.stat().st_size > 100, f"{relative_path} must not be empty", failures)
+    except OSError as error:
+        failures.append(f"{relative_path} could not be read: {error}")
+
+
+def main():
+    failures = []
+    required_files = [
+        ".gitignore",
+        ".travis.yml",
+        "CHANGES.md",
+        "Makefile",
+        "README.md",
+        "SECURITY.md",
+        "VISION.md",
+        "build.sh",
+        "Maze.xcodeproj/project.pbxproj",
+        "Maze.xcodeproj/project.xcworkspace/contents.xcworkspacedata",
+        "Maze.xcodeproj/xcshareddata/xcschemes/Maze.xcscheme",
+        "Maze/Maze-Info.plist",
+        "Maze/APPAppDelegate.h",
+        "Maze/APPAppDelegate.m",
+        "Maze/APPViewController.h",
+        "Maze/APPViewController.m",
+        "Maze/main.m",
+        "Maze/en.lproj/APPViewController.xib",
+        "Maze/en.lproj/InfoPlist.strings",
+        "Maze/pacman.png",
+        "Maze/wall.png",
+        "Maze/squareWall.png",
+        "Maze/exit.png",
+        "Maze/ghost.png",
+        "Maze/Default.png",
+        "Maze/Default@2x.png",
+        "Maze/Default-568h@2x.png",
+        "screenshots/screenshot01.png",
+        "docs/plans/2026-06-08-objective-c-game-baseline.md",
+        "docs/readme-overview.svg",
+    ]
+
+    for relative_path in required_files:
+        require((ROOT / relative_path).is_file(), f"Required file missing: {relative_path}", failures)
+
+    for xml_file in [
+        "Maze.xcodeproj/project.xcworkspace/contents.xcworkspacedata",
+        "Maze.xcodeproj/xcshareddata/xcschemes/Maze.xcscheme",
+        "Maze/en.lproj/APPViewController.xib",
+        "docs/readme-overview.svg",
+    ]:
+        parse_xml(xml_file, failures)
+
+    for image_file in [
+        "Maze/pacman.png",
+        "Maze/wall.png",
+        "Maze/squareWall.png",
+        "Maze/exit.png",
+        "Maze/ghost.png",
+        "Maze/Default.png",
+        "Maze/Default@2x.png",
+        "Maze/Default-568h@2x.png",
+        "screenshots/screenshot01.png",
+    ]:
+        check_png(image_file, failures)
+
+    app_plist = parse_plist("Maze/Maze-Info.plist", failures)
+    project = read("Maze.xcodeproj/project.pbxproj")
+    xib = read("Maze/en.lproj/APPViewController.xib")
+    build_script = read("build.sh")
+    source = "\n".join(strip_c_line_comments(path.read_text(encoding="utf-8", errors="replace"))
+                       for path in sorted((ROOT / "Maze").glob("*.m")))
+    readme = read("README.md")
+    vision = read("VISION.md")
+    security = read("SECURITY.md")
+    changes = read("CHANGES.md")
+    gitignore = read(".gitignore")
+    plan = PLAN.read_text(encoding="utf-8") if PLAN.exists() else ""
+
+    shell_result = subprocess.run(["sh", "-n", "build.sh"], cwd=str(ROOT), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    require(shell_result.returncode == 0,
+            f"build.sh must pass POSIX shell syntax checks: {shell_result.stderr.strip()}",
+            failures)
+    require("function ci_build" not in build_script and "ci_build() {" in build_script,
+            "build.sh must use POSIX-compatible function syntax",
+            failures)
+    require('xcodebuild -project "Maze.xcodeproj"' in build_script and '-scheme "Maze"' in build_script and '-configuration "Debug"' in build_script,
+            "build.sh must preserve the Maze Debug simulator build command",
+            failures)
+
+    require(app_plist.get("CFBundleIdentifier") == "$(PRODUCT_BUNDLE_IDENTIFIER)",
+            "Maze Info.plist must keep bundle identifier delegated to Xcode settings",
+            failures)
+    require(app_plist.get("NSMainNibFile") == "APPViewController",
+            "Maze Info.plist must keep the XIB entry point",
+            failures)
+    require("IPHONEOS_DEPLOYMENT_TARGET = 10.0;" in project and 'INFOPLIST_FILE = "Maze/Maze-Info.plist";' in project,
+            "Xcode project must preserve target deployment and Info.plist wiring",
+            failures)
+    require("CLANG_ENABLE_OBJC_ARC = YES;" in project and "CoreMotion.framework" in project and "QuartzCore.framework" in project,
+            "Xcode project must keep ARC and gameplay framework references",
+            failures)
+    for resource in ["pacman.png", "wall.png", "squareWall.png", "exit.png", "ghost.png", "APPViewController.xib"]:
+        require(resource in project,
+                f"Xcode project must keep resource reference: {resource}",
+                failures)
+    for resource in ["pacman.png", "squareWall.png", "exit.png", "ghost.png"]:
+        require(resource in xib,
+                f"XIB must keep image reference: {resource}",
+                failures)
+    require("outletCollection property=\"wall\"" in xib and "property=\"pacman\"" in xib and "property=\"exit\"" in xib,
+            "XIB must keep gameplay outlets wired",
+            failures)
+    require("startAccelerometerUpdatesToQueue" in source and "stopAccelerometerUpdates" in source,
+            "Objective-C source must keep accelerometer motion start/stop behavior",
+            failures)
+    require(not re.search(r"\b(?:NSLog|printf)\s*\(", source),
+            "Gameplay source must not use debug console logging",
+            failures)
+    for forbidden in ["NSURL", "NSURLConnection", "UIWebView", "http://", "https://", "upload", "analytics", "NSUserDefaults"]:
+        require(forbidden not in source,
+                f"Game sample must not add network, upload, analytics, or persistence behavior: {forbidden}",
+                failures)
+
+    require("*.local.xcconfig" in gitignore and ".env" in gitignore and "DerivedData" in gitignore,
+            ".gitignore must exclude local config and Xcode build products",
+            failures)
+    require("make check" in readme and "build.sh" in readme and "Maze.xcodeproj" in readme,
+            "README must document static verification, build script, and project usage",
+            failures)
+    require("local game" in readme.lower() and "asset" in readme.lower(),
+            "README must document local-only gameplay and asset checks",
+            failures)
+    require("scripts/check-baseline.py" in vision and "asset" in vision.lower(),
+            "VISION must describe the current static Objective-C game baseline",
+            failures)
+    require("build.sh" in security and "make check" in security,
+            "SECURITY must document build script and static baseline guardrails",
+            failures)
+    require("/bin/sh" in changes and "make check" in changes,
+            "CHANGES must record the shell fix and baseline",
+            failures)
+    require("status: completed" in plan,
+            "plan must be marked completed",
+            failures)
+
+    if shutil.which("xcodebuild"):
+        print("xcodebuild is available; run ./build.sh or an Xcode build on macOS before release.")
+    else:
+        print("xcodebuild unavailable; static iOS baseline only.")
+
+    if failures:
+        for failure in failures:
+            print(failure, file=sys.stderr)
+        return 1
+
+    print("ios-pacman Objective-C baseline checks passed.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

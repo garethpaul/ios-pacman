@@ -3,7 +3,7 @@
 
 set -eu
 
-function ci_build() {
+ci_build() {
     NAME=$1
     xcodebuild -project "Maze.xcodeproj" \
                -scheme "Maze" \

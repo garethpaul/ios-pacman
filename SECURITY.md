@@ -28,6 +28,9 @@ Helpful reports include:
 - Review found network clients, sockets, web APIs, or service endpoints; changes in those areas should receive security-focused review before merge.
 - Review found file, document, data, or media parsing flows; changes in those areas should receive security-focused review before merge.
 - No primary dependency manifest was detected in the repository root. If dependencies are added later, include a manifest and prefer reproducible installation instructions.
+- This should remain a local game sample. Treat new accounts, analytics, persistence, upload, networking, or telemetry as security-sensitive until the data flow and user value are documented.
+- `build.sh` is part of the supported build surface; keep it POSIX-shell compatible and review any changes to simulator destination, scheme, or signing behavior.
+- `make check` runs a static baseline that guards image/XIB references, plist/scheme metadata, Xcode project wiring, shell syntax, source inventory, and local-only gameplay behavior when Xcode is unavailable.
 
 ## Mobile Privacy Notes
 
