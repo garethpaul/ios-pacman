@@ -75,4 +75,4 @@ Keep changes small and tied to the project that is already present in this repos
 
 Prior README summary:
 
-> ios-pacman <!-- README-OVERVIEW-IMAGE --> [![Build Status](https://travis-ci.org/garethpaul/ios-pacman.svg?branch=master)](https://travis-ci.org/garethpaul/ios-pacman) Pacman for iOS
+> ios-pacman [![Build Status](https://travis-ci.org/garethpaul/ios-pacman.svg?branch=master)](https://travis-ci.org/garethpaul/ios-pacman) Pacman for iOS
