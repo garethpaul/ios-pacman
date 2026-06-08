@@ -9,7 +9,8 @@ import xml.etree.ElementTree as ET
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PLAN = ROOT / "docs/plans/2026-06-08-objective-c-game-baseline.md"
+BASELINE_PLAN = ROOT / "docs/plans/2026-06-08-objective-c-game-baseline.md"
+MOTION_CAPTURE_PLAN = ROOT / "docs/plans/2026-06-08-motion-capture-lifecycle.md"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -85,6 +86,7 @@ def main():
         "Maze/Default-568h@2x.png",
         "screenshots/screenshot01.png",
         "docs/plans/2026-06-08-objective-c-game-baseline.md",
+        "docs/plans/2026-06-08-motion-capture-lifecycle.md",
         "docs/readme-overview.svg",
     ]
 
@@ -123,7 +125,8 @@ def main():
     security = read("SECURITY.md")
     changes = read("CHANGES.md")
     gitignore = read(".gitignore")
-    plan = PLAN.read_text(encoding="utf-8") if PLAN.exists() else ""
+    baseline_plan = BASELINE_PLAN.read_text(encoding="utf-8") if BASELINE_PLAN.exists() else ""
+    motion_capture_plan = MOTION_CAPTURE_PLAN.read_text(encoding="utf-8") if MOTION_CAPTURE_PLAN.exists() else ""
 
     shell_result = subprocess.run(["sh", "-n", "build.sh"], cwd=str(ROOT), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     require(shell_result.returncode == 0,
@@ -168,6 +171,11 @@ def main():
     require("error != nil || accelerometerData == nil" in source and "- (void)dealloc" in source,
             "Objective-C source must ignore unavailable motion samples and stop updates during teardown",
             failures)
+    require("__weak APPViewController *weakSelf = self;" in source and
+            "APPViewController *strongSelf = weakSelf;" in source and
+            "strongSelf.acceleration = accelerometerData.acceleration;" in source,
+            "accelerometer callback must avoid strongly retaining the view controller",
+            failures)
     require(not re.search(r"\b(?:NSLog|printf)\s*\(", source),
             "Gameplay source must not use debug console logging",
             failures)
@@ -182,8 +190,8 @@ def main():
     require("make check" in readme and "build.sh" in readme and "Maze.xcodeproj" in readme,
             "README must document static verification, build script, and project usage",
             failures)
-    require("local game" in readme.lower() and "asset" in readme.lower(),
-            "README must document local-only gameplay and asset checks",
+    require("local game" in readme.lower() and "asset" in readme.lower() and "accelerometer" in readme.lower(),
+            "README must document local-only gameplay, asset checks, and accelerometer lifecycle",
             failures)
     require("scripts/check-baseline.py" in vision and "asset" in vision.lower(),
             "VISION must describe the current static Objective-C game baseline",
@@ -191,11 +199,11 @@ def main():
     require("build.sh" in security and "make check" in security,
             "SECURITY must document build script and static baseline guardrails",
             failures)
-    require("/bin/sh" in changes and "without Xcode" in changes and "accelerometer" in changes and "make check" in changes,
-            "CHANGES must record the shell fix, Xcode skip, motion guard, and baseline",
+    require("/bin/sh" in changes and "without Xcode" in changes and "accelerometer" in changes and "weak" in changes.lower() and "make check" in changes,
+            "CHANGES must record the shell fix, Xcode skip, motion guard, weak capture, and baseline",
             failures)
-    require("status: completed" in plan,
-            "plan must be marked completed",
+    require("status: completed" in baseline_plan and "status: completed" in motion_capture_plan,
+            "plans must be marked completed",
             failures)
 
     if shutil.which("xcodebuild"):

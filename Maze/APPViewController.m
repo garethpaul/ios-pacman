@@ -55,14 +55,19 @@
     self.queue         = [[NSOperationQueue alloc] init];
     
     self.motionManager.accelerometerUpdateInterval = kUpdateInterval;
-    
+
+    __weak APPViewController *weakSelf = self;
     [self.motionManager startAccelerometerUpdatesToQueue:self.queue withHandler:
      ^(CMAccelerometerData *accelerometerData, NSError *error) {
          if (error != nil || accelerometerData == nil) {
              return;
          }
-         [(id) self setAcceleration:accelerometerData.acceleration];
-         [self performSelectorOnMainThread:@selector(update) withObject:nil waitUntilDone:NO];
+         APPViewController *strongSelf = weakSelf;
+         if (strongSelf == nil) {
+             return;
+         }
+         strongSelf.acceleration = accelerometerData.acceleration;
+         [strongSelf performSelectorOnMainThread:@selector(update) withObject:nil waitUntilDone:NO];
      }];
 
 }
