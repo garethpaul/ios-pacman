@@ -9,6 +9,8 @@ status: completed
 ## Objectives
 
 - Fix the checked-in shell build script so it is valid for its `/bin/sh` shebang.
+- Make the build script skip cleanly on hosts without Xcode.
+- Keep accelerometer updates bounded to live gameplay/controller lifetime.
 - Add a local `make check` baseline for shell syntax, Xcode metadata, plist/XIB/scheme XML, image resources, source inventory, and local-only gameplay guardrails.
 - Keep the game dependency-free and free of network, analytics, account, or upload behavior.
 - Document legacy Xcode verification expectations and non-macOS static checks.

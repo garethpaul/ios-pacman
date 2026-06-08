@@ -30,6 +30,7 @@ Helpful reports include:
 - No primary dependency manifest was detected in the repository root. If dependencies are added later, include a manifest and prefer reproducible installation instructions.
 - This should remain a local game sample. Treat new accounts, analytics, persistence, upload, networking, or telemetry as security-sensitive until the data flow and user value are documented.
 - `build.sh` is part of the supported build surface; keep it POSIX-shell compatible and review any changes to simulator destination, scheme, or signing behavior.
+- `build.sh` should skip cleanly on hosts without Xcode instead of failing after partial setup.
 - `make check` runs a static baseline that guards image/XIB references, plist/scheme metadata, Xcode project wiring, shell syntax, source inventory, and local-only gameplay behavior when Xcode is unavailable.
 
 ## Mobile Privacy Notes

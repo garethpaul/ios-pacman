@@ -132,6 +132,9 @@ def main():
     require("function ci_build" not in build_script and "ci_build() {" in build_script,
             "build.sh must use POSIX-compatible function syntax",
             failures)
+    require("command -v xcodebuild" in build_script and "xcodebuild unavailable" in build_script,
+            "build.sh must skip cleanly on hosts without Xcode",
+            failures)
     require('xcodebuild -project "Maze.xcodeproj"' in build_script and '-scheme "Maze"' in build_script and '-configuration "Debug"' in build_script,
             "build.sh must preserve the Maze Debug simulator build command",
             failures)
@@ -162,6 +165,9 @@ def main():
     require("startAccelerometerUpdatesToQueue" in source and "stopAccelerometerUpdates" in source,
             "Objective-C source must keep accelerometer motion start/stop behavior",
             failures)
+    require("error != nil || accelerometerData == nil" in source and "- (void)dealloc" in source,
+            "Objective-C source must ignore unavailable motion samples and stop updates during teardown",
+            failures)
     require(not re.search(r"\b(?:NSLog|printf)\s*\(", source),
             "Gameplay source must not use debug console logging",
             failures)
@@ -185,8 +191,8 @@ def main():
     require("build.sh" in security and "make check" in security,
             "SECURITY must document build script and static baseline guardrails",
             failures)
-    require("/bin/sh" in changes and "make check" in changes,
-            "CHANGES must record the shell fix and baseline",
+    require("/bin/sh" in changes and "without Xcode" in changes and "accelerometer" in changes and "make check" in changes,
+            "CHANGES must record the shell fix, Xcode skip, motion guard, and baseline",
             failures)
     require("status: completed" in plan,
             "plan must be marked completed",

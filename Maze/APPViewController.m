@@ -58,6 +58,9 @@
     
     [self.motionManager startAccelerometerUpdatesToQueue:self.queue withHandler:
      ^(CMAccelerometerData *accelerometerData, NSError *error) {
+         if (error != nil || accelerometerData == nil) {
+             return;
+         }
          [(id) self setAcceleration:accelerometerData.acceleration];
          [self performSelectorOnMainThread:@selector(update) withObject:nil waitUntilDone:NO];
      }];
@@ -214,6 +217,11 @@
     
     self.lastUpdateTime = [NSDate date];
     
+}
+
+- (void)dealloc
+{
+    [self.motionManager stopAccelerometerUpdates];
 }
 
 @end

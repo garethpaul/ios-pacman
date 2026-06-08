@@ -46,8 +46,8 @@ opt-in and documented.
 
 Current baseline: `make check` runs `scripts/check-baseline.py` without Xcode.
 It verifies `build.sh`, plist/XIB/scheme XML, image resources, Xcode project
-references, and local-only gameplay with no debug logging, network, analytics,
-upload, or persistence behavior.
+references, accelerometer lifecycle guardrails, and local-only gameplay with no
+debug logging, network, analytics, upload, or persistence behavior.
 
 ## What We Will Not Merge (For Now)
 
