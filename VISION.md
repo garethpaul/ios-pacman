@@ -42,3 +42,6 @@ opt-in and documented.
 - Analytics or tracking features
 - Broad project migration bundled with gameplay changes
 - Build changes that make the sample harder to open
+
+This list is a roadmap guardrail, not a permanent rule.
+Strong user demand and strong technical rationale can change it.
