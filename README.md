@@ -1,3 +1,8 @@
+# ios-pacman
+
+<!-- README-OVERVIEW-IMAGE -->
+![Project overview](docs/readme-overview.svg)
+
 [![Build Status](https://travis-ci.org/garethpaul/ios-pacman.svg?branch=master)](https://travis-ci.org/garethpaul/ios-pacman)
 
 ## Pacman for iOS
