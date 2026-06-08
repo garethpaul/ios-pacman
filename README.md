@@ -1,5 +1,8 @@
 # ios-pacman
 
+<!-- README-OVERVIEW-IMAGE -->
+![Project overview](docs/readme-overview.svg)
+
 ## Overview
 
 `garethpaul/ios-pacman` is an Apple platform application or Swift sample. Pacman iOS Game
@@ -73,4 +76,3 @@ Keep changes small and tied to the project that is already present in this repos
 Prior README summary:
 
 > ios-pacman <!-- README-OVERVIEW-IMAGE --> [![Build Status](https://travis-ci.org/garethpaul/ios-pacman.svg?branch=master)](https://travis-ci.org/garethpaul/ios-pacman) Pacman for iOS
-
