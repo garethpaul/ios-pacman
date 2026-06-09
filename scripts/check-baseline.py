@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BASELINE_PLAN = ROOT / "docs/plans/2026-06-08-objective-c-game-baseline.md"
 MOTION_CAPTURE_PLAN = ROOT / "docs/plans/2026-06-08-motion-capture-lifecycle.md"
 TIME_DELTA_PLAN = ROOT / "docs/plans/2026-06-08-frame-delta-clamp.md"
+COLLISION_ALERT_PLAN = ROOT / "docs/plans/2026-06-08-collision-alert-guard.md"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -89,6 +90,7 @@ def main():
         "docs/plans/2026-06-08-objective-c-game-baseline.md",
         "docs/plans/2026-06-08-motion-capture-lifecycle.md",
         "docs/plans/2026-06-08-frame-delta-clamp.md",
+        "docs/plans/2026-06-08-collision-alert-guard.md",
         "docs/readme-overview.svg",
     ]
 
@@ -120,6 +122,8 @@ def main():
     project = read("Maze.xcodeproj/project.pbxproj")
     xib = read("Maze/en.lproj/APPViewController.xib")
     build_script = read("build.sh")
+    view_header = read("Maze/APPViewController.h")
+    view_controller = read("Maze/APPViewController.m")
     source = "\n".join(strip_c_line_comments(path.read_text(encoding="utf-8", errors="replace"))
                        for path in sorted((ROOT / "Maze").glob("*.m")))
     readme = read("README.md")
@@ -130,6 +134,7 @@ def main():
     baseline_plan = BASELINE_PLAN.read_text(encoding="utf-8") if BASELINE_PLAN.exists() else ""
     motion_capture_plan = MOTION_CAPTURE_PLAN.read_text(encoding="utf-8") if MOTION_CAPTURE_PLAN.exists() else ""
     time_delta_plan = TIME_DELTA_PLAN.read_text(encoding="utf-8") if TIME_DELTA_PLAN.exists() else ""
+    collision_alert_plan = COLLISION_ALERT_PLAN.read_text(encoding="utf-8") if COLLISION_ALERT_PLAN.exists() else ""
 
     shell_result = subprocess.run(["sh", "-n", "build.sh"], cwd=str(ROOT), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     require(shell_result.returncode == 0,
@@ -183,6 +188,15 @@ def main():
             "secondsSinceLastDraw = MAX(0, MIN(secondsSinceLastDraw, 0.1));" in source,
             "gameplay updates must clamp frame time deltas before integrating accelerometer velocity",
             failures)
+    require("<UIAlertViewDelegate>" in view_header and "@property (assign, nonatomic) BOOL collisionAlertVisible;" in view_header,
+            "APPViewController must expose collision alert visibility state for repeated collision guards",
+            failures)
+    require(view_controller.count("if (self.collisionAlertVisible) {") >= 2 and
+            view_controller.count("self.collisionAlertVisible = YES;") >= 2 and
+            "- (void)alertView:(UIAlertView *)alertView didDismissWithButtonIndex:(NSInteger)buttonIndex" in view_controller and
+            "self.collisionAlertVisible = NO;" in view_controller,
+            "collision alerts must be gated while visible and reset after dismissal",
+            failures)
     require(not re.search(r"\b(?:NSLog|printf)\s*\(", source),
             "Gameplay source must not use debug console logging",
             failures)
@@ -198,21 +212,23 @@ def main():
             "README must document static verification, build script, and project usage",
             failures)
     require("local game" in readme.lower() and "asset" in readme.lower() and
-            "accelerometer" in readme.lower() and "time delta" in readme.lower(),
-            "README must document local-only gameplay, asset checks, accelerometer lifecycle, and time delta guardrails",
+            "accelerometer" in readme.lower() and "time delta" in readme.lower() and "collision alert" in readme.lower(),
+            "README must document local-only gameplay, asset checks, accelerometer lifecycle, collision-alert, and time delta guardrails",
             failures)
-    require("scripts/check-baseline.py" in vision and "asset" in vision.lower() and "time delta" in vision.lower(),
+    require("scripts/check-baseline.py" in vision and "asset" in vision.lower() and
+            "time delta" in vision.lower() and "collision alert" in vision.lower(),
             "VISION must describe the current static Objective-C game baseline",
             failures)
-    require("build.sh" in security and "make check" in security,
+    require("build.sh" in security and "make check" in security and "collision alert" in security.lower(),
             "SECURITY must document build script and static baseline guardrails",
             failures)
     require("/bin/sh" in changes and "without Xcode" in changes and "accelerometer" in changes and
-            "weak" in changes.lower() and "time delta" in changes.lower() and "make check" in changes,
-            "CHANGES must record the shell fix, Xcode skip, motion guard, weak capture, time delta clamp, and baseline",
+            "weak" in changes.lower() and "time delta" in changes.lower() and
+            "collision alert" in changes.lower() and "make check" in changes,
+            "CHANGES must record the shell fix, Xcode skip, motion guard, weak capture, collision-alert guard, time delta clamp, and baseline",
             failures)
     require("status: completed" in baseline_plan and "status: completed" in motion_capture_plan and
-            "status: completed" in time_delta_plan,
+            "status: completed" in time_delta_plan and "status: completed" in collision_alert_plan,
             "plans must be marked completed",
             failures)
 

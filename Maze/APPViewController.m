@@ -111,8 +111,12 @@
 - (void)collisionWithExit {
 
     if (CGRectIntersectsRect(self.pacman.frame, self.exit.frame)) {
+        if (self.collisionAlertVisible) {
+            return;
+        }
         
         [self.motionManager stopAccelerometerUpdates];
+        self.collisionAlertVisible = YES;
         
         UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Congratulations"
                                                         message:@"You've won the game!"
@@ -134,8 +138,12 @@
     if (CGRectIntersectsRect(self.pacman.frame, ghostLayer1.frame)
         || CGRectIntersectsRect(self.pacman.frame, ghostLayer2.frame)
         || CGRectIntersectsRect(self.pacman.frame, ghostLayer3.frame) ) {
+        if (self.collisionAlertVisible) {
+            return;
+        }
     
         self.currentPoint  = CGPointMake(0, 144);
+        self.collisionAlertVisible = YES;
         
         UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Oops!"
                                                   message:@"Mission Failed!"
@@ -223,6 +231,11 @@
     
     self.lastUpdateTime = [NSDate date];
     
+}
+
+- (void)alertView:(UIAlertView *)alertView didDismissWithButtonIndex:(NSInteger)buttonIndex
+{
+    self.collisionAlertVisible = NO;
 }
 
 - (void)dealloc

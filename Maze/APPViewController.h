@@ -8,7 +8,7 @@
 
 #define kUpdateInterval (1.0f / 60.0f)
 
-@interface APPViewController : UIViewController
+@interface APPViewController : UIViewController <UIAlertViewDelegate>
 
 @property (strong, nonatomic) IBOutlet UIImageView *pacman;
 @property (strong, nonatomic) IBOutlet UIImageView *ghost1;
@@ -27,5 +27,6 @@
 @property (strong, nonatomic) CMMotionManager  *motionManager;
 @property (strong, nonatomic) NSOperationQueue *queue;
 @property (strong, nonatomic) NSDate *lastUpdateTime;
+@property (assign, nonatomic) BOOL collisionAlertVisible;
 
 @end

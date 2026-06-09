@@ -19,6 +19,7 @@ Priority:
 - Keep the screenshot and README aligned with app behavior
 - Maintain the build script and Xcode project structure
 - Keep accelerometer updates bounded to the live controller lifecycle
+- Gate collision alerts so repeated frames do not stack modal alerts
 - Clamp frame time delta before applying motion velocity
 - Avoid broad rewrites without gameplay verification
 - Keep `scripts/check-baseline.py` passing for shell syntax, asset/XIB
@@ -49,8 +50,8 @@ opt-in and documented.
 Current baseline: `make check` runs `scripts/check-baseline.py` without Xcode.
 It verifies `build.sh`, plist/XIB/scheme XML, image resources, Xcode project
 references, accelerometer lifecycle guardrails, frame time delta clamping, and
-local-only gameplay with no debug logging, network, analytics, upload, or
-persistence behavior.
+collision alert gating, with local-only gameplay and no debug logging, network,
+analytics, upload, or persistence behavior.
 It also verifies that motion callbacks avoid strongly retaining the controller.
 
 ## What We Will Not Merge (For Now)
