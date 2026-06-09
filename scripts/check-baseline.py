@@ -13,6 +13,7 @@ BASELINE_PLAN = ROOT / "docs/plans/2026-06-08-objective-c-game-baseline.md"
 MOTION_CAPTURE_PLAN = ROOT / "docs/plans/2026-06-08-motion-capture-lifecycle.md"
 TIME_DELTA_PLAN = ROOT / "docs/plans/2026-06-08-frame-delta-clamp.md"
 COLLISION_ALERT_PLAN = ROOT / "docs/plans/2026-06-08-collision-alert-guard.md"
+ALERT_PAUSE_PLAN = ROOT / "docs/plans/2026-06-09-alert-update-pause.md"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -91,6 +92,7 @@ def main():
         "docs/plans/2026-06-08-motion-capture-lifecycle.md",
         "docs/plans/2026-06-08-frame-delta-clamp.md",
         "docs/plans/2026-06-08-collision-alert-guard.md",
+        "docs/plans/2026-06-09-alert-update-pause.md",
         "docs/readme-overview.svg",
     ]
 
@@ -135,6 +137,7 @@ def main():
     motion_capture_plan = MOTION_CAPTURE_PLAN.read_text(encoding="utf-8") if MOTION_CAPTURE_PLAN.exists() else ""
     time_delta_plan = TIME_DELTA_PLAN.read_text(encoding="utf-8") if TIME_DELTA_PLAN.exists() else ""
     collision_alert_plan = COLLISION_ALERT_PLAN.read_text(encoding="utf-8") if COLLISION_ALERT_PLAN.exists() else ""
+    alert_pause_plan = ALERT_PAUSE_PLAN.read_text(encoding="utf-8") if ALERT_PAUSE_PLAN.exists() else ""
 
     shell_result = subprocess.run(["sh", "-n", "build.sh"], cwd=str(ROOT), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     require(shell_result.returncode == 0,
@@ -197,6 +200,9 @@ def main():
             "self.collisionAlertVisible = NO;" in view_controller,
             "collision alerts must be gated while visible and reset after dismissal",
             failures)
+    require("- (void)update {\n    if (self.collisionAlertVisible) {\n        return;\n    }" in view_controller,
+            "gameplay updates must pause while collision alerts are visible",
+            failures)
     require(not re.search(r"\b(?:NSLog|printf)\s*\(", source),
             "Gameplay source must not use debug console logging",
             failures)
@@ -212,24 +218,27 @@ def main():
             "README must document static verification, build script, and project usage",
             failures)
     require("local game" in readme.lower() and "asset" in readme.lower() and
-            "accelerometer" in readme.lower() and "time delta" in readme.lower() and "collision alert" in readme.lower(),
+            "accelerometer" in readme.lower() and "time delta" in readme.lower() and "collision alert" in readme.lower() and "alert pause" in readme.lower(),
             "README must document local-only gameplay, asset checks, accelerometer lifecycle, collision-alert, and time delta guardrails",
             failures)
     require("scripts/check-baseline.py" in vision and "asset" in vision.lower() and
-            "time delta" in vision.lower() and "collision alert" in vision.lower(),
+            "time delta" in vision.lower() and "collision alert" in vision.lower() and "alert pause" in vision.lower(),
             "VISION must describe the current static Objective-C game baseline",
             failures)
-    require("build.sh" in security and "make check" in security and "collision alert" in security.lower(),
+    require("build.sh" in security and "make check" in security and "collision alert" in security.lower() and "alert pause" in security.lower(),
             "SECURITY must document build script and static baseline guardrails",
             failures)
     require("/bin/sh" in changes and "without Xcode" in changes and "accelerometer" in changes and
             "weak" in changes.lower() and "time delta" in changes.lower() and
-            "collision alert" in changes.lower() and "make check" in changes,
+            "collision alert" in changes.lower() and "alert pause" in changes.lower() and "make check" in changes,
             "CHANGES must record the shell fix, Xcode skip, motion guard, weak capture, collision-alert guard, time delta clamp, and baseline",
             failures)
     require("status: completed" in baseline_plan and "status: completed" in motion_capture_plan and
             "status: completed" in time_delta_plan and "status: completed" in collision_alert_plan,
             "plans must be marked completed",
+            failures)
+    require("status: completed" in alert_pause_plan,
+            "alert update pause plan must be marked completed",
             failures)
 
     if shutil.which("xcodebuild"):

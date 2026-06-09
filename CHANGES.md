@@ -7,6 +7,7 @@
 - Ignored unavailable accelerometer samples and stopped motion updates during controller teardown.
 - Avoided strongly retaining the controller from the accelerometer callback by using weak capture.
 - Guarded collision alerts so repeated collision frames do not stack duplicate alerts.
+- Added alert pause behavior so gameplay updates stop while collision alerts are visible.
 - Clamped frame time delta before applying accelerometer velocity to avoid oversized movement steps.
 - Added `make check` and a static Objective-C/Xcode baseline for shell syntax, plist/XIB/scheme XML, image resources, project wiring, and local-only gameplay guardrails.
 - Documented the legacy Xcode project, build script, asset inventory, and static verification workflow.

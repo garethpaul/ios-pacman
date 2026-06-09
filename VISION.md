@@ -49,9 +49,9 @@ opt-in and documented.
 
 Current baseline: `make check` runs `scripts/check-baseline.py` without Xcode.
 It verifies `build.sh`, plist/XIB/scheme XML, image resources, Xcode project
-references, accelerometer lifecycle guardrails, frame time delta clamping, and
-collision alert gating, with local-only gameplay and no debug logging, network,
-analytics, upload, or persistence behavior.
+references, accelerometer lifecycle guardrails, frame time delta clamping,
+collision alert gating, and alert pause behavior, with local-only gameplay and
+no debug logging, network, analytics, upload, or persistence behavior.
 It also verifies that motion callbacks avoid strongly retaining the controller.
 
 ## What We Will Not Merge (For Now)

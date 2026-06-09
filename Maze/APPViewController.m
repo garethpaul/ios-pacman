@@ -214,6 +214,9 @@
 }
 
 - (void)update {
+    if (self.collisionAlertVisible) {
+        return;
+    }
     
     NSTimeInterval secondsSinceLastDraw = -([self.lastUpdateTime timeIntervalSinceNow]);
     secondsSinceLastDraw = MAX(0, MIN(secondsSinceLastDraw, 0.1));

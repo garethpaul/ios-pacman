@@ -50,7 +50,7 @@ The checked-in project has no external dependency manifest. Use Xcode for full b
 
 - Open `Maze.xcodeproj` in Xcode, choose the app or sample scheme, and run it on the matching simulator/device.
 - Run `./build.sh` when the required platform toolchain is installed. On hosts without Xcode, the script exits cleanly after reporting that the Xcode build was skipped.
-- This is a local game sample with XIB-wired image assets and CoreMotion movement. Gameplay updates clamp the frame time delta before applying accelerometer velocity, and collision alerts are gated while visible. Do not add accounts, analytics, persistence, upload, or network behavior without a dedicated design and security review.
+- This is a local game sample with XIB-wired image assets and CoreMotion movement. Gameplay updates clamp the frame time delta before applying accelerometer velocity, collision alerts are gated while visible, and alert pause behavior stops movement updates behind modal prompts. Do not add accounts, analytics, persistence, upload, or network behavior without a dedicated design and security review.
 
 ## Testing and Verification
 
@@ -60,7 +60,7 @@ Run the local static baseline:
 make check
 ```
 
-The baseline runs `scripts/check-baseline.py`, validates POSIX shell syntax for `build.sh`, parses plist/XIB/scheme XML, checks PNG resources, verifies Xcode project references, checks accelerometer lifecycle, collision alert gating, frame time delta clamping, and weak callback capture guardrails, and guards against debug logging, network, analytics, upload, or persistence behavior.
+The baseline runs `scripts/check-baseline.py`, validates POSIX shell syntax for `build.sh`, parses plist/XIB/scheme XML, checks PNG resources, verifies Xcode project references, checks accelerometer lifecycle, collision alert gating, alert pause behavior, frame time delta clamping, and weak callback capture guardrails, and guards against debug logging, network, analytics, upload, or persistence behavior.
 
 For full legacy verification on macOS, run `./build.sh` or use Xcode's build/test action with the appropriate scheme and destination.
 
@@ -83,6 +83,7 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - This looks like an Apple platform project or sample. Xcode, Swift, CocoaPods, and deployment target versions may need to match the original project era.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.
+- See `docs/plans/2026-06-09-alert-update-pause.md` for the alert pause guardrail.
 - Run `make check` before pushing changes to Objective-C sources, plist/XIB files, image assets, Xcode metadata, `build.sh`, or gameplay/security documentation.
 
 ## Contributing
