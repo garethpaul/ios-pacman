@@ -14,6 +14,7 @@ MOTION_CAPTURE_PLAN = ROOT / "docs/plans/2026-06-08-motion-capture-lifecycle.md"
 TIME_DELTA_PLAN = ROOT / "docs/plans/2026-06-08-frame-delta-clamp.md"
 COLLISION_ALERT_PLAN = ROOT / "docs/plans/2026-06-08-collision-alert-guard.md"
 ALERT_PAUSE_PLAN = ROOT / "docs/plans/2026-06-09-alert-update-pause.md"
+ALERT_CLOCK_PLAN = ROOT / "docs/plans/2026-06-09-alert-frame-clock-reset.md"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -93,6 +94,7 @@ def main():
         "docs/plans/2026-06-08-frame-delta-clamp.md",
         "docs/plans/2026-06-08-collision-alert-guard.md",
         "docs/plans/2026-06-09-alert-update-pause.md",
+        "docs/plans/2026-06-09-alert-frame-clock-reset.md",
         "docs/readme-overview.svg",
     ]
 
@@ -138,6 +140,7 @@ def main():
     time_delta_plan = TIME_DELTA_PLAN.read_text(encoding="utf-8") if TIME_DELTA_PLAN.exists() else ""
     collision_alert_plan = COLLISION_ALERT_PLAN.read_text(encoding="utf-8") if COLLISION_ALERT_PLAN.exists() else ""
     alert_pause_plan = ALERT_PAUSE_PLAN.read_text(encoding="utf-8") if ALERT_PAUSE_PLAN.exists() else ""
+    alert_clock_plan = ALERT_CLOCK_PLAN.read_text(encoding="utf-8") if ALERT_CLOCK_PLAN.exists() else ""
 
     shell_result = subprocess.run(["sh", "-n", "build.sh"], cwd=str(ROOT), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     require(shell_result.returncode == 0,
@@ -200,6 +203,12 @@ def main():
             "self.collisionAlertVisible = NO;" in view_controller,
             "collision alerts must be gated while visible and reset after dismissal",
             failures)
+    alert_dismiss = re.search(r"- \(void\)alertView:\(UIAlertView \*\)alertView didDismissWithButtonIndex:\(NSInteger\)buttonIndex[\s\S]+?\n}", view_controller)
+    require(alert_dismiss is not None and
+            "self.collisionAlertVisible = NO;" in alert_dismiss.group(0) and
+            "self.lastUpdateTime = [NSDate date];" in alert_dismiss.group(0),
+            "alert dismissal must reset the frame clock before gameplay resumes",
+            failures)
     require("- (void)update {\n    if (self.collisionAlertVisible) {\n        return;\n    }" in view_controller,
             "gameplay updates must pause while collision alerts are visible",
             failures)
@@ -221,11 +230,18 @@ def main():
             "accelerometer" in readme.lower() and "time delta" in readme.lower() and "collision alert" in readme.lower() and "alert pause" in readme.lower(),
             "README must document local-only gameplay, asset checks, accelerometer lifecycle, collision-alert, and time delta guardrails",
             failures)
+    require("frame clock" in readme.lower(),
+            "README must document alert frame clock reset behavior",
+            failures)
     require("scripts/check-baseline.py" in vision and "asset" in vision.lower() and
             "time delta" in vision.lower() and "collision alert" in vision.lower() and "alert pause" in vision.lower(),
             "VISION must describe the current static Objective-C game baseline",
             failures)
-    require("build.sh" in security and "make check" in security and "collision alert" in security.lower() and "alert pause" in security.lower(),
+    require("frame clock" in vision.lower(),
+            "VISION must describe alert frame clock reset behavior",
+            failures)
+    require("build.sh" in security and "make check" in security and "collision alert" in security.lower() and
+            "alert pause" in security.lower() and "frame clock" in security.lower(),
             "SECURITY must document build script and static baseline guardrails",
             failures)
     require("/bin/sh" in changes and "without Xcode" in changes and "accelerometer" in changes and
@@ -233,12 +249,18 @@ def main():
             "collision alert" in changes.lower() and "alert pause" in changes.lower() and "make check" in changes,
             "CHANGES must record the shell fix, Xcode skip, motion guard, weak capture, collision-alert guard, time delta clamp, and baseline",
             failures)
+    require("frame clock" in changes.lower(),
+            "CHANGES must record alert frame clock reset behavior",
+            failures)
     require("status: completed" in baseline_plan and "status: completed" in motion_capture_plan and
             "status: completed" in time_delta_plan and "status: completed" in collision_alert_plan,
             "plans must be marked completed",
             failures)
     require("status: completed" in alert_pause_plan,
             "alert update pause plan must be marked completed",
+            failures)
+    require("status: completed" in alert_clock_plan,
+            "alert frame clock reset plan must be marked completed",
             failures)
 
     if shutil.which("xcodebuild"):

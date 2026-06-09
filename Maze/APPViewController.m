@@ -239,6 +239,7 @@
 - (void)alertView:(UIAlertView *)alertView didDismissWithButtonIndex:(NSInteger)buttonIndex
 {
     self.collisionAlertVisible = NO;
+    self.lastUpdateTime = [NSDate date];
 }
 
 - (void)dealloc

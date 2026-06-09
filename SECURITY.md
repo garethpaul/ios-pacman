@@ -32,7 +32,7 @@ Helpful reports include:
 - `build.sh` is part of the supported build surface; keep it POSIX-shell compatible and review any changes to simulator destination, scheme, or signing behavior.
 - `build.sh` should skip cleanly on hosts without Xcode instead of failing after partial setup.
 - Accelerometer callbacks should avoid retaining the gameplay controller after the screen is gone; motion updates must remain tied to the live controller lifecycle.
-- Collision alerts should stay gated while visible so repeated collision frames do not stack duplicate modal prompts, and alert pause behavior should stop movement updates behind those prompts.
+- Collision alerts should stay gated while visible so repeated collision frames do not stack duplicate modal prompts, alert pause behavior should stop movement updates behind those prompts, and alert dismissal should reset the frame clock before movement resumes.
 - `make check` runs a static baseline that guards image/XIB references, plist/scheme metadata, Xcode project wiring, shell syntax, source inventory, and local-only gameplay behavior when Xcode is unavailable.
 
 ## Mobile Privacy Notes

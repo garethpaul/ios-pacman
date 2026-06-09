@@ -20,6 +20,7 @@ Priority:
 - Maintain the build script and Xcode project structure
 - Keep accelerometer updates bounded to the live controller lifecycle
 - Gate collision alerts so repeated frames do not stack modal alerts
+- Reset the frame clock when alert pause ends
 - Clamp frame time delta before applying motion velocity
 - Avoid broad rewrites without gameplay verification
 - Keep `scripts/check-baseline.py` passing for shell syntax, asset/XIB
@@ -51,7 +52,8 @@ Current baseline: `make check` runs `scripts/check-baseline.py` without Xcode.
 It verifies `build.sh`, plist/XIB/scheme XML, image resources, Xcode project
 references, accelerometer lifecycle guardrails, frame time delta clamping,
 collision alert gating, and alert pause behavior, with local-only gameplay and
-no debug logging, network, analytics, upload, or persistence behavior.
+alert frame clock reset behavior, with no debug logging, network, analytics,
+upload, or persistence behavior.
 It also verifies that motion callbacks avoid strongly retaining the controller.
 
 ## What We Will Not Merge (For Now)
