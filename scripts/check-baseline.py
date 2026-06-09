@@ -15,6 +15,7 @@ TIME_DELTA_PLAN = ROOT / "docs/plans/2026-06-08-frame-delta-clamp.md"
 COLLISION_ALERT_PLAN = ROOT / "docs/plans/2026-06-08-collision-alert-guard.md"
 ALERT_PAUSE_PLAN = ROOT / "docs/plans/2026-06-09-alert-update-pause.md"
 ALERT_CLOCK_PLAN = ROOT / "docs/plans/2026-06-09-alert-frame-clock-reset.md"
+FAILURE_VELOCITY_PLAN = ROOT / "docs/plans/2026-06-09-failure-velocity-reset.md"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -95,6 +96,7 @@ def main():
         "docs/plans/2026-06-08-collision-alert-guard.md",
         "docs/plans/2026-06-09-alert-update-pause.md",
         "docs/plans/2026-06-09-alert-frame-clock-reset.md",
+        "docs/plans/2026-06-09-failure-velocity-reset.md",
         "docs/readme-overview.svg",
     ]
 
@@ -141,6 +143,7 @@ def main():
     collision_alert_plan = COLLISION_ALERT_PLAN.read_text(encoding="utf-8") if COLLISION_ALERT_PLAN.exists() else ""
     alert_pause_plan = ALERT_PAUSE_PLAN.read_text(encoding="utf-8") if ALERT_PAUSE_PLAN.exists() else ""
     alert_clock_plan = ALERT_CLOCK_PLAN.read_text(encoding="utf-8") if ALERT_CLOCK_PLAN.exists() else ""
+    failure_velocity_plan = FAILURE_VELOCITY_PLAN.read_text(encoding="utf-8") if FAILURE_VELOCITY_PLAN.exists() else ""
 
     shell_result = subprocess.run(["sh", "-n", "build.sh"], cwd=str(ROOT), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     require(shell_result.returncode == 0,
@@ -203,6 +206,17 @@ def main():
             "self.collisionAlertVisible = NO;" in view_controller,
             "collision alerts must be gated while visible and reset after dismissal",
             failures)
+    ghost_collision_index = view_controller.find("- (void)collisionWithGhosts")
+    failure_position_reset_index = view_controller.find("self.currentPoint  = CGPointMake(0, 144);", ghost_collision_index)
+    failure_x_velocity_reset_index = view_controller.find("self.pacmanXVelocity = 0;", ghost_collision_index)
+    failure_y_velocity_reset_index = view_controller.find("self.pacmanYVelocity = 0;", ghost_collision_index)
+    failure_alert_index = view_controller.find('UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Oops!"', ghost_collision_index)
+    require(ghost_collision_index != -1 and failure_position_reset_index != -1 and
+            failure_x_velocity_reset_index != -1 and failure_y_velocity_reset_index != -1 and
+            failure_alert_index != -1 and
+            failure_position_reset_index < failure_x_velocity_reset_index < failure_y_velocity_reset_index < failure_alert_index,
+            "failure collision handling must reset position and velocities before showing the alert",
+            failures)
     alert_dismiss = re.search(r"- \(void\)alertView:\(UIAlertView \*\)alertView didDismissWithButtonIndex:\(NSInteger\)buttonIndex[\s\S]+?\n}", view_controller)
     require(alert_dismiss is not None and
             "self.collisionAlertVisible = NO;" in alert_dismiss.group(0) and
@@ -233,6 +247,9 @@ def main():
     require("frame clock" in readme.lower(),
             "README must document alert frame clock reset behavior",
             failures)
+    require("velocity reset" in readme.lower(),
+            "README must document failure velocity reset behavior",
+            failures)
     require("scripts/check-baseline.py" in vision and "asset" in vision.lower() and
             "time delta" in vision.lower() and "collision alert" in vision.lower() and "alert pause" in vision.lower(),
             "VISION must describe the current static Objective-C game baseline",
@@ -240,9 +257,15 @@ def main():
     require("frame clock" in vision.lower(),
             "VISION must describe alert frame clock reset behavior",
             failures)
+    require("velocity reset" in vision.lower(),
+            "VISION must describe failure velocity reset behavior",
+            failures)
     require("build.sh" in security and "make check" in security and "collision alert" in security.lower() and
             "alert pause" in security.lower() and "frame clock" in security.lower(),
             "SECURITY must document build script and static baseline guardrails",
+            failures)
+    require("velocity reset" in security.lower(),
+            "SECURITY must document failure velocity reset guardrails",
             failures)
     require("/bin/sh" in changes and "without Xcode" in changes and "accelerometer" in changes and
             "weak" in changes.lower() and "time delta" in changes.lower() and
@@ -251,6 +274,9 @@ def main():
             failures)
     require("frame clock" in changes.lower(),
             "CHANGES must record alert frame clock reset behavior",
+            failures)
+    require("velocity reset" in changes.lower(),
+            "CHANGES must record failure velocity reset behavior",
             failures)
     require("status: completed" in baseline_plan and "status: completed" in motion_capture_plan and
             "status: completed" in time_delta_plan and "status: completed" in collision_alert_plan,
@@ -261,6 +287,9 @@ def main():
             failures)
     require("status: completed" in alert_clock_plan,
             "alert frame clock reset plan must be marked completed",
+            failures)
+    require("status: completed" in failure_velocity_plan,
+            "failure velocity reset plan must be marked completed",
             failures)
 
     if shutil.which("xcodebuild"):

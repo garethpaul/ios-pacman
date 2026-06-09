@@ -143,6 +143,8 @@
         }
     
         self.currentPoint  = CGPointMake(0, 144);
+        self.pacmanXVelocity = 0;
+        self.pacmanYVelocity = 0;
         self.collisionAlertVisible = YES;
         
         UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Oops!"

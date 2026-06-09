@@ -1,5 +1,10 @@
 # Changes
 
+## 2026-06-09
+
+- Added a failure velocity reset so returning to the start after a ghost
+  collision does not preserve stale movement speed.
+
 ## 2026-06-08
 
 - Made `build.sh` compatible with its `/bin/sh` shebang by removing bash-only function syntax.
