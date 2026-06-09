@@ -208,6 +208,7 @@
 - (void)update {
     
     NSTimeInterval secondsSinceLastDraw = -([self.lastUpdateTime timeIntervalSinceNow]);
+    secondsSinceLastDraw = MAX(0, MIN(secondsSinceLastDraw, 0.1));
         
     self.pacmanYVelocity = self.pacmanYVelocity - (self.acceleration.x * secondsSinceLastDraw);
     self.pacmanXVelocity = self.pacmanXVelocity - (self.acceleration.y * secondsSinceLastDraw);

@@ -11,6 +11,7 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 BASELINE_PLAN = ROOT / "docs/plans/2026-06-08-objective-c-game-baseline.md"
 MOTION_CAPTURE_PLAN = ROOT / "docs/plans/2026-06-08-motion-capture-lifecycle.md"
+TIME_DELTA_PLAN = ROOT / "docs/plans/2026-06-08-frame-delta-clamp.md"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -87,6 +88,7 @@ def main():
         "screenshots/screenshot01.png",
         "docs/plans/2026-06-08-objective-c-game-baseline.md",
         "docs/plans/2026-06-08-motion-capture-lifecycle.md",
+        "docs/plans/2026-06-08-frame-delta-clamp.md",
         "docs/readme-overview.svg",
     ]
 
@@ -127,6 +129,7 @@ def main():
     gitignore = read(".gitignore")
     baseline_plan = BASELINE_PLAN.read_text(encoding="utf-8") if BASELINE_PLAN.exists() else ""
     motion_capture_plan = MOTION_CAPTURE_PLAN.read_text(encoding="utf-8") if MOTION_CAPTURE_PLAN.exists() else ""
+    time_delta_plan = TIME_DELTA_PLAN.read_text(encoding="utf-8") if TIME_DELTA_PLAN.exists() else ""
 
     shell_result = subprocess.run(["sh", "-n", "build.sh"], cwd=str(ROOT), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     require(shell_result.returncode == 0,
@@ -176,6 +179,10 @@ def main():
             "strongSelf.acceleration = accelerometerData.acceleration;" in source,
             "accelerometer callback must avoid strongly retaining the view controller",
             failures)
+    require("NSTimeInterval secondsSinceLastDraw = -([self.lastUpdateTime timeIntervalSinceNow]);" in source and
+            "secondsSinceLastDraw = MAX(0, MIN(secondsSinceLastDraw, 0.1));" in source,
+            "gameplay updates must clamp frame time deltas before integrating accelerometer velocity",
+            failures)
     require(not re.search(r"\b(?:NSLog|printf)\s*\(", source),
             "Gameplay source must not use debug console logging",
             failures)
@@ -190,19 +197,22 @@ def main():
     require("make check" in readme and "build.sh" in readme and "Maze.xcodeproj" in readme,
             "README must document static verification, build script, and project usage",
             failures)
-    require("local game" in readme.lower() and "asset" in readme.lower() and "accelerometer" in readme.lower(),
-            "README must document local-only gameplay, asset checks, and accelerometer lifecycle",
+    require("local game" in readme.lower() and "asset" in readme.lower() and
+            "accelerometer" in readme.lower() and "time delta" in readme.lower(),
+            "README must document local-only gameplay, asset checks, accelerometer lifecycle, and time delta guardrails",
             failures)
-    require("scripts/check-baseline.py" in vision and "asset" in vision.lower(),
+    require("scripts/check-baseline.py" in vision and "asset" in vision.lower() and "time delta" in vision.lower(),
             "VISION must describe the current static Objective-C game baseline",
             failures)
     require("build.sh" in security and "make check" in security,
             "SECURITY must document build script and static baseline guardrails",
             failures)
-    require("/bin/sh" in changes and "without Xcode" in changes and "accelerometer" in changes and "weak" in changes.lower() and "make check" in changes,
-            "CHANGES must record the shell fix, Xcode skip, motion guard, weak capture, and baseline",
+    require("/bin/sh" in changes and "without Xcode" in changes and "accelerometer" in changes and
+            "weak" in changes.lower() and "time delta" in changes.lower() and "make check" in changes,
+            "CHANGES must record the shell fix, Xcode skip, motion guard, weak capture, time delta clamp, and baseline",
             failures)
-    require("status: completed" in baseline_plan and "status: completed" in motion_capture_plan,
+    require("status: completed" in baseline_plan and "status: completed" in motion_capture_plan and
+            "status: completed" in time_delta_plan,
             "plans must be marked completed",
             failures)
 
