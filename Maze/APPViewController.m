@@ -115,6 +115,9 @@
             return;
         }
         
+        self.gameCompleted = YES;
+        self.pacmanXVelocity = 0;
+        self.pacmanYVelocity = 0;
         [self.motionManager stopAccelerometerUpdates];
         self.collisionAlertVisible = YES;
         
@@ -216,7 +219,7 @@
 }
 
 - (void)update {
-    if (self.collisionAlertVisible) {
+    if (self.collisionAlertVisible || self.gameCompleted) {
         return;
     }
     

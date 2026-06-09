@@ -17,6 +17,7 @@ COLLISION_ALERT_PLAN = ROOT / "docs/plans/2026-06-08-collision-alert-guard.md"
 ALERT_PAUSE_PLAN = ROOT / "docs/plans/2026-06-09-alert-update-pause.md"
 ALERT_CLOCK_PLAN = ROOT / "docs/plans/2026-06-09-alert-frame-clock-reset.md"
 FAILURE_VELOCITY_PLAN = ROOT / "docs/plans/2026-06-09-failure-velocity-reset.md"
+WIN_COMPLETION_PLAN = ROOT / "docs/plans/2026-06-09-win-completion-update-guard.md"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -99,6 +100,7 @@ def main():
         "docs/plans/2026-06-09-alert-update-pause.md",
         "docs/plans/2026-06-09-alert-frame-clock-reset.md",
         "docs/plans/2026-06-09-failure-velocity-reset.md",
+        "docs/plans/2026-06-09-win-completion-update-guard.md",
         "docs/readme-overview.svg",
     ]
 
@@ -148,6 +150,7 @@ def main():
     alert_pause_plan = ALERT_PAUSE_PLAN.read_text(encoding="utf-8") if ALERT_PAUSE_PLAN.exists() else ""
     alert_clock_plan = ALERT_CLOCK_PLAN.read_text(encoding="utf-8") if ALERT_CLOCK_PLAN.exists() else ""
     failure_velocity_plan = FAILURE_VELOCITY_PLAN.read_text(encoding="utf-8") if FAILURE_VELOCITY_PLAN.exists() else ""
+    win_completion_plan = WIN_COMPLETION_PLAN.read_text(encoding="utf-8") if WIN_COMPLETION_PLAN.exists() else ""
 
     shell_result = subprocess.run(["sh", "-n", "build.sh"], cwd=str(ROOT), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     require(shell_result.returncode == 0,
@@ -204,11 +207,26 @@ def main():
     require("<UIAlertViewDelegate>" in view_header and "@property (assign, nonatomic) BOOL collisionAlertVisible;" in view_header,
             "APPViewController must expose collision alert visibility state for repeated collision guards",
             failures)
+    require("@property (assign, nonatomic) BOOL gameCompleted;" in view_header,
+            "APPViewController must expose terminal win-completion state",
+            failures)
     require(view_controller.count("if (self.collisionAlertVisible) {") >= 2 and
             view_controller.count("self.collisionAlertVisible = YES;") >= 2 and
             "- (void)alertView:(UIAlertView *)alertView didDismissWithButtonIndex:(NSInteger)buttonIndex" in view_controller and
             "self.collisionAlertVisible = NO;" in view_controller,
             "collision alerts must be gated while visible and reset after dismissal",
+            failures)
+    exit_collision_index = view_controller.find("- (void)collisionWithExit")
+    win_completed_index = view_controller.find("self.gameCompleted = YES;", exit_collision_index)
+    win_x_velocity_reset_index = view_controller.find("self.pacmanXVelocity = 0;", exit_collision_index)
+    win_y_velocity_reset_index = view_controller.find("self.pacmanYVelocity = 0;", exit_collision_index)
+    win_motion_stop_index = view_controller.find("[self.motionManager stopAccelerometerUpdates];", exit_collision_index)
+    win_alert_index = view_controller.find('UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Congratulations"', exit_collision_index)
+    require(exit_collision_index != -1 and win_completed_index != -1 and
+            win_x_velocity_reset_index != -1 and win_y_velocity_reset_index != -1 and
+            win_motion_stop_index != -1 and win_alert_index != -1 and
+            win_completed_index < win_x_velocity_reset_index < win_y_velocity_reset_index < win_motion_stop_index < win_alert_index,
+            "win collision handling must mark completion and stop movement before showing the alert",
             failures)
     ghost_collision_index = view_controller.find("- (void)collisionWithGhosts")
     failure_position_reset_index = view_controller.find("self.currentPoint  = CGPointMake(0, 144);", ghost_collision_index)
@@ -227,8 +245,8 @@ def main():
             "self.lastUpdateTime = [NSDate date];" in alert_dismiss.group(0),
             "alert dismissal must reset the frame clock before gameplay resumes",
             failures)
-    require("- (void)update {\n    if (self.collisionAlertVisible) {\n        return;\n    }" in view_controller,
-            "gameplay updates must pause while collision alerts are visible",
+    require("- (void)update {\n    if (self.collisionAlertVisible || self.gameCompleted) {\n        return;\n    }" in view_controller,
+            "gameplay updates must pause while collision alerts are visible or the game is completed",
             failures)
     require(not re.search(r"\b(?:NSLog|printf)\s*\(", source),
             "Gameplay source must not use debug console logging",
@@ -257,6 +275,9 @@ def main():
     require("velocity reset" in readme.lower(),
             "README must document failure velocity reset behavior",
             failures)
+    require("win completion" in readme.lower(),
+            "README must document terminal win-completion update guard behavior",
+            failures)
     require("scripts/check-baseline.py" in vision and "make lint" in vision and "make test" in vision and "make build" in vision and "asset" in vision.lower() and
             "time delta" in vision.lower() and "collision alert" in vision.lower() and "alert pause" in vision.lower(),
             "VISION must describe the current static Objective-C game baseline",
@@ -267,12 +288,18 @@ def main():
     require("velocity reset" in vision.lower(),
             "VISION must describe failure velocity reset behavior",
             failures)
+    require("win completion" in vision.lower(),
+            "VISION must describe terminal win-completion update guard behavior",
+            failures)
     require("build.sh" in security and "make check" in security and "collision alert" in security.lower() and
             "alert pause" in security.lower() and "frame clock" in security.lower(),
             "SECURITY must document build script and static baseline guardrails",
             failures)
     require("velocity reset" in security.lower(),
             "SECURITY must document failure velocity reset guardrails",
+            failures)
+    require("win completion" in security.lower(),
+            "SECURITY must document terminal win-completion update guardrails",
             failures)
     require("/bin/sh" in changes and "without Xcode" in changes and "accelerometer" in changes and
             "weak" in changes.lower() and "time delta" in changes.lower() and
@@ -284,6 +311,9 @@ def main():
             failures)
     require("velocity reset" in changes.lower(),
             "CHANGES must record failure velocity reset behavior",
+            failures)
+    require("win completion" in changes.lower(),
+            "CHANGES must record terminal win-completion update guard behavior",
             failures)
     require("status: completed" in baseline_plan and "status: completed" in motion_capture_plan and
             "status: completed" in time_delta_plan and "status: completed" in collision_alert_plan,
@@ -300,6 +330,9 @@ def main():
             failures)
     require("status: completed" in failure_velocity_plan,
             "failure velocity reset plan must be marked completed",
+            failures)
+    require("status: completed" in win_completion_plan,
+            "win completion update guard plan must be marked completed",
             failures)
 
     if shutil.which("xcodebuild"):

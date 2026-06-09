@@ -6,6 +6,8 @@
   static Objective-C game baseline.
 - Added a failure velocity reset so returning to the start after a ghost
   collision does not preserve stale movement speed.
+- Added a win completion update guard so movement stays stopped after the exit
+  alert appears.
 
 ## 2026-06-08
 
