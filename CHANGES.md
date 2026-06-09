@@ -2,6 +2,8 @@
 
 ## 2026-06-09
 
+- Added local `make lint`, `make test`, and `make build` gate aliases for the
+  static Objective-C game baseline.
 - Added a failure velocity reset so returning to the start after a ghost
   collision does not preserve stale movement speed.
 

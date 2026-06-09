@@ -10,6 +10,7 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 BASELINE_PLAN = ROOT / "docs/plans/2026-06-08-objective-c-game-baseline.md"
+MAKE_GATES_PLAN = ROOT / "docs/plans/2026-06-09-make-gate-aliases.md"
 MOTION_CAPTURE_PLAN = ROOT / "docs/plans/2026-06-08-motion-capture-lifecycle.md"
 TIME_DELTA_PLAN = ROOT / "docs/plans/2026-06-08-frame-delta-clamp.md"
 COLLISION_ALERT_PLAN = ROOT / "docs/plans/2026-06-08-collision-alert-guard.md"
@@ -91,6 +92,7 @@ def main():
         "Maze/Default-568h@2x.png",
         "screenshots/screenshot01.png",
         "docs/plans/2026-06-08-objective-c-game-baseline.md",
+        "docs/plans/2026-06-09-make-gate-aliases.md",
         "docs/plans/2026-06-08-motion-capture-lifecycle.md",
         "docs/plans/2026-06-08-frame-delta-clamp.md",
         "docs/plans/2026-06-08-collision-alert-guard.md",
@@ -137,7 +139,9 @@ def main():
     security = read("SECURITY.md")
     changes = read("CHANGES.md")
     gitignore = read(".gitignore")
+    makefile = read("Makefile")
     baseline_plan = BASELINE_PLAN.read_text(encoding="utf-8") if BASELINE_PLAN.exists() else ""
+    make_gates_plan = MAKE_GATES_PLAN.read_text(encoding="utf-8") if MAKE_GATES_PLAN.exists() else ""
     motion_capture_plan = MOTION_CAPTURE_PLAN.read_text(encoding="utf-8") if MOTION_CAPTURE_PLAN.exists() else ""
     time_delta_plan = TIME_DELTA_PLAN.read_text(encoding="utf-8") if TIME_DELTA_PLAN.exists() else ""
     collision_alert_plan = COLLISION_ALERT_PLAN.read_text(encoding="utf-8") if COLLISION_ALERT_PLAN.exists() else ""
@@ -237,7 +241,10 @@ def main():
     require("*.local.xcconfig" in gitignore and ".env" in gitignore and "DerivedData" in gitignore,
             ".gitignore must exclude local config and Xcode build products",
             failures)
-    require("make check" in readme and "build.sh" in readme and "Maze.xcodeproj" in readme,
+    require(".PHONY: build check lint test" in makefile and "lint test build: check" in makefile,
+            "Makefile must expose lint, test, and build aliases for the local baseline",
+            failures)
+    require("make lint" in readme and "make test" in readme and "make build" in readme and "make check" in readme and "build.sh" in readme and "Maze.xcodeproj" in readme,
             "README must document static verification, build script, and project usage",
             failures)
     require("local game" in readme.lower() and "asset" in readme.lower() and
@@ -250,7 +257,7 @@ def main():
     require("velocity reset" in readme.lower(),
             "README must document failure velocity reset behavior",
             failures)
-    require("scripts/check-baseline.py" in vision and "asset" in vision.lower() and
+    require("scripts/check-baseline.py" in vision and "make lint" in vision and "make test" in vision and "make build" in vision and "asset" in vision.lower() and
             "time delta" in vision.lower() and "collision alert" in vision.lower() and "alert pause" in vision.lower(),
             "VISION must describe the current static Objective-C game baseline",
             failures)
@@ -269,7 +276,7 @@ def main():
             failures)
     require("/bin/sh" in changes and "without Xcode" in changes and "accelerometer" in changes and
             "weak" in changes.lower() and "time delta" in changes.lower() and
-            "collision alert" in changes.lower() and "alert pause" in changes.lower() and "make check" in changes,
+            "collision alert" in changes.lower() and "alert pause" in changes.lower() and "make check" in changes and "make lint" in changes and "make test" in changes and "make build" in changes,
             "CHANGES must record the shell fix, Xcode skip, motion guard, weak capture, collision-alert guard, time delta clamp, and baseline",
             failures)
     require("frame clock" in changes.lower(),
@@ -281,6 +288,9 @@ def main():
     require("status: completed" in baseline_plan and "status: completed" in motion_capture_plan and
             "status: completed" in time_delta_plan and "status: completed" in collision_alert_plan,
             "plans must be marked completed",
+            failures)
+    require("status: completed" in make_gates_plan,
+            "make gate aliases plan must be marked completed",
             failures)
     require("status: completed" in alert_pause_plan,
             "alert update pause plan must be marked completed",

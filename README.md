@@ -41,6 +41,9 @@ Additional scan context:
 ```bash
 git clone https://github.com/garethpaul/ios-pacman.git
 cd ios-pacman
+make lint
+make test
+make build
 make check
 ```
 
@@ -57,8 +60,15 @@ The checked-in project has no external dependency manifest. Use Xcode for full b
 Run the local static baseline:
 
 ```bash
+make lint
+make test
+make build
 make check
 ```
+
+The `lint`, `test`, and `build` targets intentionally alias the static baseline
+on hosts without the legacy Xcode toolchain, so the standard local gate commands
+stay available while preserving the single source of truth.
 
 The baseline runs `scripts/check-baseline.py`, validates POSIX shell syntax for `build.sh`, parses plist/XIB/scheme XML, checks PNG resources, verifies Xcode project references, checks accelerometer lifecycle, collision alert gating, failure velocity reset behavior, alert pause behavior, alert frame clock reset behavior, frame time delta clamping, and weak callback capture guardrails, and guards against debug logging, network, analytics, upload, or persistence behavior.
 
@@ -86,7 +96,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - See `docs/plans/2026-06-09-alert-update-pause.md` for the alert pause guardrail.
 - See `docs/plans/2026-06-09-alert-frame-clock-reset.md` for the alert frame clock reset guardrail.
 - See `docs/plans/2026-06-09-failure-velocity-reset.md` for the failure velocity reset guardrail.
-- Run `make check` before pushing changes to Objective-C sources, plist/XIB files, image assets, Xcode metadata, `build.sh`, or gameplay/security documentation.
+- See `docs/plans/2026-06-09-make-gate-aliases.md` for the local gate alias guardrail.
+- Run `make lint`, `make test`, `make build`, and `make check` before pushing changes to Objective-C sources, plist/XIB files, image assets, Xcode metadata, `build.sh`, or gameplay/security documentation.
 
 ## Contributing
 

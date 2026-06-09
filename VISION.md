@@ -26,6 +26,8 @@ Priority:
 - Avoid broad rewrites without gameplay verification
 - Keep `scripts/check-baseline.py` passing for shell syntax, asset/XIB
   references, Xcode metadata, Objective-C source inventory, and local-only gameplay
+- Keep `make lint`, `make test`, `make build`, and `make check` available as
+  local verification gates
 
 Next priorities:
 
@@ -49,12 +51,13 @@ Canonical security policy and reporting:
 This is a local game sample. Future networking, accounts, or analytics should be
 opt-in and documented.
 
-Current baseline: `make check` runs `scripts/check-baseline.py` without Xcode.
-It verifies `build.sh`, plist/XIB/scheme XML, image resources, Xcode project
-references, accelerometer lifecycle guardrails, frame time delta clamping,
-collision alert gating, failure velocity reset behavior, and alert pause
-behavior, with local-only gameplay and alert frame clock reset behavior, with no
-debug logging, network, analytics, upload, or persistence behavior.
+Current baseline: `make lint`, `make test`, `make build`, and `make check` run
+`scripts/check-baseline.py` without Xcode. It verifies `build.sh`,
+plist/XIB/scheme XML, image resources, Xcode project references, accelerometer
+lifecycle guardrails, frame time delta clamping, collision alert gating, failure
+velocity reset behavior, and alert pause behavior, with local-only gameplay and
+alert frame clock reset behavior, with no debug logging, network, analytics,
+upload, or persistence behavior.
 It also verifies that motion callbacks avoid strongly retaining the controller.
 
 ## What We Will Not Merge (For Now)
