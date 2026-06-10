@@ -19,6 +19,7 @@ ALERT_CLOCK_PLAN = ROOT / "docs/plans/2026-06-09-alert-frame-clock-reset.md"
 FAILURE_VELOCITY_PLAN = ROOT / "docs/plans/2026-06-09-failure-velocity-reset.md"
 WIN_COMPLETION_PLAN = ROOT / "docs/plans/2026-06-09-win-completion-update-guard.md"
 PREVIOUS_POINT_PLAN = ROOT / "docs/plans/2026-06-10-previous-point-initialization.md"
+HOSTED_VALIDATION_PLAN = ROOT / "docs/plans/2026-06-10-hosted-project-validation.md"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -66,6 +67,7 @@ def main():
     failures = []
     required_files = [
         ".gitignore",
+        ".github/workflows/check.yml",
         ".travis.yml",
         "CHANGES.md",
         "Makefile",
@@ -103,6 +105,7 @@ def main():
         "docs/plans/2026-06-09-failure-velocity-reset.md",
         "docs/plans/2026-06-09-win-completion-update-guard.md",
         "docs/plans/2026-06-10-previous-point-initialization.md",
+        "docs/plans/2026-06-10-hosted-project-validation.md",
         "docs/readme-overview.svg",
     ]
 
@@ -154,6 +157,8 @@ def main():
     failure_velocity_plan = FAILURE_VELOCITY_PLAN.read_text(encoding="utf-8") if FAILURE_VELOCITY_PLAN.exists() else ""
     win_completion_plan = WIN_COMPLETION_PLAN.read_text(encoding="utf-8") if WIN_COMPLETION_PLAN.exists() else ""
     previous_point_plan = PREVIOUS_POINT_PLAN.read_text(encoding="utf-8") if PREVIOUS_POINT_PLAN.exists() else ""
+    hosted_validation_plan = HOSTED_VALIDATION_PLAN.read_text(encoding="utf-8") if HOSTED_VALIDATION_PLAN.exists() else ""
+    workflow = read(".github/workflows/check.yml")
 
     shell_result = subprocess.run(["sh", "-n", "build.sh"], cwd=str(ROOT), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     require(shell_result.returncode == 0,
@@ -355,9 +360,17 @@ def main():
     require("status: completed" in previous_point_plan,
             "previous point initialization plan must be marked completed",
             failures)
+    require("status: completed" in hosted_validation_plan and "make check" in hosted_validation_plan,
+            "hosted validation plan must be completed", failures)
+    require("permissions:\n  contents: read" in workflow and "cancel-in-progress: true" in workflow and
+            "runs-on: macos-15" in workflow and "timeout-minutes: 10" in workflow and
+            "actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10" in workflow and "run: make check" in workflow,
+            "Check workflow contract must stay pinned, read-only, and bounded", failures)
 
     if shutil.which("xcodebuild"):
-        print("xcodebuild is available; run ./build.sh or an Xcode build on macOS before release.")
+        result = subprocess.run(["xcodebuild", "-list", "-project", "Maze.xcodeproj"], cwd=ROOT,
+                                stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+        require(result.returncode == 0, "xcodebuild could not parse Maze.xcodeproj: " + result.stderr.strip(), failures)
     else:
         print("xcodebuild unavailable; static iOS baseline only.")
 

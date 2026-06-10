@@ -72,6 +72,9 @@ stay available while preserving the single source of truth.
 
 The baseline runs `scripts/check-baseline.py`, validates POSIX shell syntax for `build.sh`, parses plist/XIB/scheme XML, checks PNG resources, verifies Xcode project references, checks accelerometer lifecycle, collision alert gating, failure velocity reset behavior, previous position initialization, win completion update guards, alert pause behavior, alert frame clock reset behavior, frame time delta clamping, and weak callback capture guardrails, and guards against debug logging, network, analytics, upload, or persistence behavior.
 
+Pinned `macos-15` CI runs `make check` and parses `Maze.xcodeproj`; it does not
+exercise accelerometer input, alerts, rendering, or gameplay.
+
 For full legacy verification on macOS, run `./build.sh` or use Xcode's build/test action with the appropriate scheme and destination.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.

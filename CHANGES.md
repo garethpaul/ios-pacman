@@ -4,6 +4,7 @@
 
 - Initialized the previous position to the starting position so first-frame wall
   collision rollback does not use the zero-value point.
+- Added pinned, read-only macOS CI that parses `Maze.xcodeproj` through `make check`.
 
 ## 2026-06-09
 
