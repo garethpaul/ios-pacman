@@ -1,5 +1,10 @@
 # Changes
 
+## 2026-06-10
+
+- Initialized the previous position to the starting position so first-frame wall
+  collision rollback does not use the zero-value point.
+
 ## 2026-06-09
 
 - Added local `make lint`, `make test`, and `make build` gate aliases for the

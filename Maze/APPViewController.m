@@ -51,6 +51,7 @@
     self.lastUpdateTime = [[NSDate alloc] init];
         
     self.currentPoint  = CGPointMake(0, 144);
+    self.previousPoint = self.currentPoint;
     self.motionManager = [[CMMotionManager alloc]  init];
     self.queue         = [[NSOperationQueue alloc] init];
     

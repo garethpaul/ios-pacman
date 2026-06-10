@@ -18,6 +18,7 @@ ALERT_PAUSE_PLAN = ROOT / "docs/plans/2026-06-09-alert-update-pause.md"
 ALERT_CLOCK_PLAN = ROOT / "docs/plans/2026-06-09-alert-frame-clock-reset.md"
 FAILURE_VELOCITY_PLAN = ROOT / "docs/plans/2026-06-09-failure-velocity-reset.md"
 WIN_COMPLETION_PLAN = ROOT / "docs/plans/2026-06-09-win-completion-update-guard.md"
+PREVIOUS_POINT_PLAN = ROOT / "docs/plans/2026-06-10-previous-point-initialization.md"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -101,6 +102,7 @@ def main():
         "docs/plans/2026-06-09-alert-frame-clock-reset.md",
         "docs/plans/2026-06-09-failure-velocity-reset.md",
         "docs/plans/2026-06-09-win-completion-update-guard.md",
+        "docs/plans/2026-06-10-previous-point-initialization.md",
         "docs/readme-overview.svg",
     ]
 
@@ -151,6 +153,7 @@ def main():
     alert_clock_plan = ALERT_CLOCK_PLAN.read_text(encoding="utf-8") if ALERT_CLOCK_PLAN.exists() else ""
     failure_velocity_plan = FAILURE_VELOCITY_PLAN.read_text(encoding="utf-8") if FAILURE_VELOCITY_PLAN.exists() else ""
     win_completion_plan = WIN_COMPLETION_PLAN.read_text(encoding="utf-8") if WIN_COMPLETION_PLAN.exists() else ""
+    previous_point_plan = PREVIOUS_POINT_PLAN.read_text(encoding="utf-8") if PREVIOUS_POINT_PLAN.exists() else ""
 
     shell_result = subprocess.run(["sh", "-n", "build.sh"], cwd=str(ROOT), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     require(shell_result.returncode == 0,
@@ -203,6 +206,9 @@ def main():
     require("NSTimeInterval secondsSinceLastDraw = -([self.lastUpdateTime timeIntervalSinceNow]);" in source and
             "secondsSinceLastDraw = MAX(0, MIN(secondsSinceLastDraw, 0.1));" in source,
             "gameplay updates must clamp frame time deltas before integrating accelerometer velocity",
+            failures)
+    require("self.currentPoint  = CGPointMake(0, 144);\n    self.previousPoint = self.currentPoint;" in view_controller,
+            "viewDidLoad must initialize previousPoint to the starting position before wall collisions can roll back movement",
             failures)
     require("<UIAlertViewDelegate>" in view_header and "@property (assign, nonatomic) BOOL collisionAlertVisible;" in view_header,
             "APPViewController must expose collision alert visibility state for repeated collision guards",
@@ -278,6 +284,9 @@ def main():
     require("win completion" in readme.lower(),
             "README must document terminal win-completion update guard behavior",
             failures)
+    require("previous position" in readme.lower(),
+            "README must document previous-position initialization behavior",
+            failures)
     require("scripts/check-baseline.py" in vision and "make lint" in vision and "make test" in vision and "make build" in vision and "asset" in vision.lower() and
             "time delta" in vision.lower() and "collision alert" in vision.lower() and "alert pause" in vision.lower(),
             "VISION must describe the current static Objective-C game baseline",
@@ -291,6 +300,9 @@ def main():
     require("win completion" in vision.lower(),
             "VISION must describe terminal win-completion update guard behavior",
             failures)
+    require("previous position" in vision.lower(),
+            "VISION must describe previous-position initialization behavior",
+            failures)
     require("build.sh" in security and "make check" in security and "collision alert" in security.lower() and
             "alert pause" in security.lower() and "frame clock" in security.lower(),
             "SECURITY must document build script and static baseline guardrails",
@@ -300,6 +312,9 @@ def main():
             failures)
     require("win completion" in security.lower(),
             "SECURITY must document terminal win-completion update guardrails",
+            failures)
+    require("previous position" in security.lower(),
+            "SECURITY must document previous-position initialization guardrails",
             failures)
     require("/bin/sh" in changes and "without Xcode" in changes and "accelerometer" in changes and
             "weak" in changes.lower() and "time delta" in changes.lower() and
@@ -314,6 +329,9 @@ def main():
             failures)
     require("win completion" in changes.lower(),
             "CHANGES must record terminal win-completion update guard behavior",
+            failures)
+    require("previous position" in changes.lower(),
+            "CHANGES must record previous-position initialization behavior",
             failures)
     require("status: completed" in baseline_plan and "status: completed" in motion_capture_plan and
             "status: completed" in time_delta_plan and "status: completed" in collision_alert_plan,
@@ -333,6 +351,9 @@ def main():
             failures)
     require("status: completed" in win_completion_plan,
             "win completion update guard plan must be marked completed",
+            failures)
+    require("status: completed" in previous_point_plan,
+            "previous point initialization plan must be marked completed",
             failures)
 
     if shutil.which("xcodebuild"):
