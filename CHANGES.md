@@ -2,6 +2,11 @@
 
 ## 2026-06-10
 
+- Resolved boundaries and walls before outcome collisions, evaluated exit and
+  ghost intersections against the corrected candidate frame, and stopped ghost
+  checks after a win.
+- Raised deployment settings to iOS 12 and upgraded pinned macOS CI from project
+  parsing to an unsigned generic-simulator app build.
 - Initialized the previous position to the starting position so first-frame wall
   collision rollback does not use the zero-value point.
 - Added pinned, read-only macOS CI that parses `Maze.xcodeproj` through `make check`.

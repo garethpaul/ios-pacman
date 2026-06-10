@@ -8,14 +8,10 @@ if ! command -v xcodebuild >/dev/null 2>&1; then
     exit 0
 fi
 
-ci_build() {
-    NAME=$1
-    xcodebuild -project "Maze.xcodeproj" \
-               -scheme "Maze" \
-               -destination "platform=iOS Simulator,name=${NAME}" \
-               -sdk iphonesimulator \
-               -configuration "Debug" \
-               build
-}
-
-ci_build "iPhone 6"
+xcodebuild -project "Maze.xcodeproj" \
+           -scheme "Maze" \
+           -destination "generic/platform=iOS Simulator" \
+           -sdk iphonesimulator \
+           -configuration "Debug" \
+           CODE_SIGNING_ALLOWED=NO \
+           build

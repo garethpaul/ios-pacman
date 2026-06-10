@@ -53,7 +53,7 @@ The checked-in project has no external dependency manifest. Use Xcode for full b
 
 - Open `Maze.xcodeproj` in Xcode, choose the app or sample scheme, and run it on the matching simulator/device.
 - Run `./build.sh` when the required platform toolchain is installed. On hosts without Xcode, the script exits cleanly after reporting that the Xcode build was skipped.
-- This is a local game sample with XIB-wired image assets and CoreMotion movement. Gameplay updates clamp the frame time delta before applying accelerometer velocity, collision alerts are gated while visible, failure collision handling applies a velocity reset when sending the player back to the start, the previous position starts aligned with the initial player position for wall-collision rollback, win completion stops future movement updates after the exit alert, alert pause behavior stops movement updates behind modal prompts, and alert dismissal resets the frame clock before movement resumes. Do not add accounts, analytics, persistence, upload, or network behavior without a dedicated design and security review.
+- This is a local game sample with XIB-wired image assets and CoreMotion movement. Gameplay updates clamp the frame time delta before applying accelerometer velocity, resolve boundary and wall constraints before evaluating the corrected collision frame, stop outcome checks after a win, gate collision alerts while visible, and reset the frame clock after alerts. Do not add accounts, analytics, persistence, upload, or network behavior without a dedicated design and security review.
 
 ## Testing and Verification
 
@@ -70,10 +70,11 @@ The `lint`, `test`, and `build` targets intentionally alias the static baseline
 on hosts without the legacy Xcode toolchain, so the standard local gate commands
 stay available while preserving the single source of truth.
 
-The baseline runs `scripts/check-baseline.py`, validates POSIX shell syntax for `build.sh`, parses plist/XIB/scheme XML, checks PNG resources, verifies Xcode project references, checks accelerometer lifecycle, collision alert gating, failure velocity reset behavior, previous position initialization, win completion update guards, alert pause behavior, alert frame clock reset behavior, frame time delta clamping, and weak callback capture guardrails, and guards against debug logging, network, analytics, upload, or persistence behavior.
+The baseline runs `scripts/check-baseline.py`, validates POSIX shell syntax for `build.sh`, parses plist/XIB/scheme XML, checks PNG resources, verifies Xcode project references, checks corrected collision ordering and candidate-frame use, accelerometer lifecycle, collision alert gating, failure velocity reset behavior, previous position initialization, win completion update guards, alert pause behavior, alert frame clock reset behavior, frame time delta clamping, and weak callback capture guardrails, and guards against debug logging, network, analytics, upload, or persistence behavior.
 
-Pinned `macos-15` CI runs `make check` and parses `Maze.xcodeproj`; it does not
-exercise accelerometer input, alerts, rendering, or gameplay.
+Pinned `macos-15` CI runs `make check` and compiles the unsigned app for a
+generic iOS simulator. It does not exercise accelerometer input, alerts,
+rendering, or gameplay.
 
 For full legacy verification on macOS, run `./build.sh` or use Xcode's build/test action with the appropriate scheme and destination.
 
