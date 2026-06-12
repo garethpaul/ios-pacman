@@ -74,19 +74,19 @@
 }
 
 - (void)movePacman {
-        
-    [self collisionWithExit];
-    [self collisionWithGhosts];
+    // Resolve physical constraints before evaluating gameplay outcomes.
     [self collisionWithBoundaries];
-    [self collsionWithWalls];
+    [self collisionWithWalls];
+
+    CGRect candidateFrame = [self candidatePacmanFrame];
+    [self collisionWithExit:candidateFrame];
+    if (!self.gameCompleted) {
+        [self collisionWithGhosts:candidateFrame];
+    }
 
     // Move pacman to its new position
-    
-    CGRect frame = self.pacman.frame;
-    frame.origin.x = self.currentPoint.x;
-    frame.origin.y = self.currentPoint.y;
-    
-    self.pacman.frame = frame;
+
+    self.pacman.frame = [self candidatePacmanFrame];
     
     // Rotate the sprite
     
@@ -109,9 +109,15 @@
 
 }
 
-- (void)collisionWithExit {
+- (CGRect)candidatePacmanFrame {
+    CGRect frame = self.pacman.frame;
+    frame.origin = self.currentPoint;
+    return frame;
+}
 
-    if (CGRectIntersectsRect(self.pacman.frame, self.exit.frame)) {
+- (void)collisionWithExit:(CGRect)pacmanFrame {
+
+    if (CGRectIntersectsRect(pacmanFrame, self.exit.frame)) {
         if (self.collisionAlertVisible) {
             return;
         }
@@ -133,15 +139,15 @@
     
 }
 
-- (void)collisionWithGhosts {
+- (void)collisionWithGhosts:(CGRect)pacmanFrame {
 
-    CALayer *ghostLayer1 = [self.ghost1.layer presentationLayer];
-    CALayer *ghostLayer2 = [self.ghost2.layer presentationLayer];
-    CALayer *ghostLayer3 = [self.ghost3.layer presentationLayer];
+    CALayer *ghostLayer1 = (CALayer *)self.ghost1.layer.presentationLayer ?: self.ghost1.layer;
+    CALayer *ghostLayer2 = (CALayer *)self.ghost2.layer.presentationLayer ?: self.ghost2.layer;
+    CALayer *ghostLayer3 = (CALayer *)self.ghost3.layer.presentationLayer ?: self.ghost3.layer;
 
-    if (CGRectIntersectsRect(self.pacman.frame, ghostLayer1.frame)
-        || CGRectIntersectsRect(self.pacman.frame, ghostLayer2.frame)
-        || CGRectIntersectsRect(self.pacman.frame, ghostLayer3.frame) ) {
+    if (CGRectIntersectsRect(pacmanFrame, ghostLayer1.frame)
+        || CGRectIntersectsRect(pacmanFrame, ghostLayer2.frame)
+        || CGRectIntersectsRect(pacmanFrame, ghostLayer3.frame) ) {
         if (self.collisionAlertVisible) {
             return;
         }
@@ -187,11 +193,8 @@
     
 }
 
-- (void)collsionWithWalls {
-    
-    CGRect frame = self.pacman.frame;
-    frame.origin.x = self.currentPoint.x;
-    frame.origin.y = self.currentPoint.y;
+- (void)collisionWithWalls {
+    CGRect frame = [self candidatePacmanFrame];
     
     for (UIImageView *image in self.wall) {
     

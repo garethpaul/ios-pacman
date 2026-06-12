@@ -2,10 +2,15 @@
 
 ## 2026-06-10
 
+- Resolved boundaries and walls before outcome collisions, evaluated exit and
+  ghost intersections against the corrected candidate frame, and stopped ghost
+  checks after a win.
+- Raised deployment settings to iOS 12 and upgraded pinned macOS CI from project
+  parsing to an unsigned generic-simulator app build.
 - Initialized the previous position to the starting position so first-frame wall
   collision rollback does not use the zero-value point.
-- Added a GitHub Actions workflow that runs the static `make check` baseline
-  with Python 3.12 for pushes and pull requests.
+- Added pinned, read-only macOS GitHub Actions CI with Python 3.12 and no
+  persisted checkout credentials; `make check` compiles the unsigned app.
 
 ## 2026-06-09
 

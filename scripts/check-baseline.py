@@ -20,6 +20,8 @@ FAILURE_VELOCITY_PLAN = ROOT / "docs/plans/2026-06-09-failure-velocity-reset.md"
 WIN_COMPLETION_PLAN = ROOT / "docs/plans/2026-06-09-win-completion-update-guard.md"
 PREVIOUS_POINT_PLAN = ROOT / "docs/plans/2026-06-10-previous-point-initialization.md"
 CI_PLAN = ROOT / "docs/plans/2026-06-10-ci-baseline.md"
+HOSTED_VALIDATION_PLAN = ROOT / "docs/plans/2026-06-10-hosted-project-validation.md"
+CORRECTED_COLLISION_PLAN = ROOT / "docs/plans/2026-06-10-corrected-collision-build.md"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -106,6 +108,8 @@ def main():
         "docs/plans/2026-06-09-win-completion-update-guard.md",
         "docs/plans/2026-06-10-previous-point-initialization.md",
         "docs/plans/2026-06-10-ci-baseline.md",
+        "docs/plans/2026-06-10-hosted-project-validation.md",
+        "docs/plans/2026-06-10-corrected-collision-build.md",
         "docs/readme-overview.svg",
     ]
 
@@ -159,19 +163,22 @@ def main():
     win_completion_plan = WIN_COMPLETION_PLAN.read_text(encoding="utf-8") if WIN_COMPLETION_PLAN.exists() else ""
     previous_point_plan = PREVIOUS_POINT_PLAN.read_text(encoding="utf-8") if PREVIOUS_POINT_PLAN.exists() else ""
     ci_plan = CI_PLAN.read_text(encoding="utf-8") if CI_PLAN.exists() else ""
+    hosted_validation_plan = HOSTED_VALIDATION_PLAN.read_text(encoding="utf-8") if HOSTED_VALIDATION_PLAN.exists() else ""
+    corrected_collision_plan = CORRECTED_COLLISION_PLAN.read_text(encoding="utf-8") if CORRECTED_COLLISION_PLAN.exists() else ""
 
     shell_result = subprocess.run(["sh", "-n", "build.sh"], cwd=str(ROOT), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     require(shell_result.returncode == 0,
             f"build.sh must pass POSIX shell syntax checks: {shell_result.stderr.strip()}",
             failures)
-    require("function ci_build" not in build_script and "ci_build() {" in build_script,
-            "build.sh must use POSIX-compatible function syntax",
-            failures)
+    require("function ci_build" not in build_script,
+            "build.sh must remain POSIX-compatible", failures)
     require("command -v xcodebuild" in build_script and "xcodebuild unavailable" in build_script,
             "build.sh must skip cleanly on hosts without Xcode",
             failures)
-    require('xcodebuild -project "Maze.xcodeproj"' in build_script and '-scheme "Maze"' in build_script and '-configuration "Debug"' in build_script,
-            "build.sh must preserve the Maze Debug simulator build command",
+    require('xcodebuild -project "Maze.xcodeproj"' in build_script and '-scheme "Maze"' in build_script and
+            '-destination "generic/platform=iOS Simulator"' in build_script and '-configuration "Debug"' in build_script and
+            "CODE_SIGNING_ALLOWED=NO" in build_script,
+            "build.sh must compile the unsigned Maze Debug target for a generic simulator",
             failures)
 
     require(app_plist.get("CFBundleIdentifier") == "$(PRODUCT_BUNDLE_IDENTIFIER)",
@@ -180,8 +187,9 @@ def main():
     require(app_plist.get("NSMainNibFile") == "APPViewController",
             "Maze Info.plist must keep the XIB entry point",
             failures)
-    require("IPHONEOS_DEPLOYMENT_TARGET = 10.0;" in project and 'INFOPLIST_FILE = "Maze/Maze-Info.plist";' in project,
-            "Xcode project must preserve target deployment and Info.plist wiring",
+    require(project.count("IPHONEOS_DEPLOYMENT_TARGET = 12.0;") == 4 and
+            'INFOPLIST_FILE = "Maze/Maze-Info.plist";' in project,
+            "Xcode project must use iOS 12 project and target deployment settings and preserve Info.plist wiring",
             failures)
     require("CLANG_ENABLE_OBJC_ARC = YES;" in project and "CoreMotion.framework" in project and "QuartzCore.framework" in project,
             "Xcode project must keep ARC and gameplay framework references",
@@ -259,6 +267,22 @@ def main():
     require("- (void)update {\n    if (self.collisionAlertVisible || self.gameCompleted) {\n        return;\n    }" in view_controller,
             "gameplay updates must pause while collision alerts are visible or the game is completed",
             failures)
+    move_index = view_controller.find("- (void)movePacman")
+    boundary_index = view_controller.find("[self collisionWithBoundaries];", move_index)
+    wall_index = view_controller.find("[self collisionWithWalls];", move_index)
+    candidate_index = view_controller.find("CGRect candidateFrame = [self candidatePacmanFrame];", move_index)
+    exit_index = view_controller.find("[self collisionWithExit:candidateFrame];", move_index)
+    completion_guard_index = view_controller.find("if (!self.gameCompleted) {", move_index)
+    ghost_index = view_controller.find("[self collisionWithGhosts:candidateFrame];", move_index)
+    require(move_index != -1 and boundary_index < wall_index < candidate_index < exit_index < completion_guard_index < ghost_index,
+            "movement must resolve boundaries and walls before evaluating one corrected outcome frame and stop ghost checks after a win",
+            failures)
+    require("- (CGRect)candidatePacmanFrame" in view_controller and "frame.origin = self.currentPoint;" in view_controller and
+            "- (void)collisionWithExit:(CGRect)pacmanFrame" in view_controller and
+            "- (void)collisionWithGhosts:(CGRect)pacmanFrame" in view_controller and
+            view_controller.count("CGRectIntersectsRect(pacmanFrame,") == 4 and "collsionWithWalls" not in view_controller,
+            "outcome collisions must use the corrected candidate frame and the wall handler must keep its corrected spelling",
+            failures)
     require(not re.search(r"\b(?:NSLog|printf)\s*\(", source),
             "Gameplay source must not use debug console logging",
             failures)
@@ -270,8 +294,9 @@ def main():
     require("*.local.xcconfig" in gitignore and ".env" in gitignore and "DerivedData" in gitignore,
             ".gitignore must exclude local config and Xcode build products",
             failures)
-    require(".PHONY: build check lint test" in makefile and "lint test build: check" in makefile,
-            "Makefile must expose lint, test, and build aliases for the local baseline",
+    require(".PHONY: build check lint test" in makefile and "lint test build: check" in makefile and
+            "check:\n\tpython3 scripts/check-baseline.py\n\t./build.sh" in makefile,
+            "Makefile must expose lint, test, and build aliases and compile through the check gate when Xcode is available",
             failures)
     require("make lint" in readme and "make test" in readme and "make build" in readme and "make check" in readme and "build.sh" in readme and "Maze.xcodeproj" in readme,
             "README must document static verification, build script, and project usage",
@@ -350,10 +375,14 @@ def main():
     require("GitHub Actions" in changes,
             "CHANGES must record hosted baseline coverage",
             failures)
-    require("actions/setup-python@v5" in ci_workflow and
+    require("corrected candidate frame" in changes and "unsigned generic-simulator" in changes,
+            "CHANGES must record corrected collision and hosted build behavior",
+            failures)
+    require("actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065" in ci_workflow and
             'python-version: "3.12"' in ci_workflow and
+            "persist-credentials: false" in ci_workflow and
             "make check" in ci_workflow,
-            "GitHub Actions workflow must install Python 3.12 and run make check",
+            "GitHub Actions workflow must use credential-free checkout, pinned Python 3.12, and make check",
             failures)
     require("status: completed" in baseline_plan and "status: completed" in motion_capture_plan and
             "status: completed" in time_delta_plan and "status: completed" in collision_alert_plan,
@@ -377,12 +406,32 @@ def main():
     require("status: completed" in previous_point_plan,
             "previous point initialization plan must be marked completed",
             failures)
-    require("status: completed" in ci_plan and "make check" in ci_plan,
-            "CI baseline plan must be marked completed with make check verification",
+    require("status: completed" in ci_plan and "make check" in ci_plan and
+            "Python" in ci_plan and "3.12" in ci_plan and "credential persistence disabled" in ci_plan and
+            "generic-simulator" in ci_plan,
+            "CI baseline plan must document completed credential-free Python and simulator validation",
             failures)
+    require("status: completed" in hosted_validation_plan and "make check" in hosted_validation_plan and
+            "Python 3.12" in hosted_validation_plan and "generic iOS simulator" in hosted_validation_plan,
+            "hosted validation plan must document completed Python and simulator validation", failures)
+    require("status: completed" in corrected_collision_plan and "generic iOS simulator" in corrected_collision_plan,
+            "corrected collision build plan must be completed", failures)
+    require(ci_workflow.count("permissions:\n  contents: read") == 1 and
+            not re.search(r"(?m)^\s{2,}permissions:\s*$", ci_workflow) and
+            not re.search(r"(?m)^\s+[A-Za-z0-9_-]+:\s*write\s*$", ci_workflow) and
+            "cancel-in-progress: true" in ci_workflow and
+            "runs-on: macos-15" in ci_workflow and "timeout-minutes: 10" in ci_workflow and
+            ci_workflow.count("uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10") == 1 and
+            "persist-credentials: false" in ci_workflow and
+            ci_workflow.count("uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065") == 1 and
+            'python-version: "3.12"' in ci_workflow and
+            "run: make check" in ci_workflow,
+            "Check workflow contract must stay pinned, read-only, and bounded", failures)
 
     if shutil.which("xcodebuild"):
-        print("xcodebuild is available; run ./build.sh or an Xcode build on macOS before release.")
+        result = subprocess.run(["xcodebuild", "-list", "-project", "Maze.xcodeproj"], cwd=ROOT,
+                                stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+        require(result.returncode == 0, "xcodebuild could not parse Maze.xcodeproj: " + result.stderr.strip(), failures)
     else:
         print("xcodebuild unavailable; static iOS baseline only.")
 

@@ -22,6 +22,8 @@ Priority:
 - Gate collision alerts so repeated frames do not stack modal alerts
 - Reset movement velocity after failure collisions send the player to start
 - Keep previous position initialized for wall-collision rollback
+- Resolve physical constraints before evaluating one corrected outcome frame
+- Stop ghost outcome checks after a terminal win
 - Keep win completion as a terminal update guard after the exit alert appears
 - Reset the frame clock when alert pause ends
 - Clamp frame time delta before applying motion velocity
@@ -56,7 +58,8 @@ This is a local game sample. Future networking, accounts, or analytics should be
 opt-in and documented.
 
 Current baseline: `make lint`, `make test`, `make build`, and `make check` run
-`scripts/check-baseline.py` without Xcode. It verifies `build.sh`,
+`scripts/check-baseline.py` without Xcode, while hosted macOS CI also compiles
+the unsigned app for a generic iOS simulator. The baseline verifies `build.sh`,
 plist/XIB/scheme XML, image resources, Xcode project references, accelerometer
 lifecycle guardrails, frame time delta clamping, collision alert gating, failure
 velocity reset behavior, previous position initialization, win completion update
