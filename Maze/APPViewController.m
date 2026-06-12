@@ -63,12 +63,15 @@
          if (error != nil || accelerometerData == nil) {
              return;
          }
-         APPViewController *strongSelf = weakSelf;
-         if (strongSelf == nil) {
-             return;
-         }
-         strongSelf.acceleration = accelerometerData.acceleration;
-         [strongSelf performSelectorOnMainThread:@selector(update) withObject:nil waitUntilDone:NO];
+         CMAcceleration acceleration = accelerometerData.acceleration;
+         dispatch_async(dispatch_get_main_queue(), ^{
+             APPViewController *strongSelf = weakSelf;
+             if (strongSelf == nil) {
+                 return;
+             }
+             strongSelf.acceleration = acceleration;
+             [strongSelf update];
+         });
      }];
 
 }

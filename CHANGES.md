@@ -1,5 +1,10 @@
 # Changes
 
+## 2026-06-12
+
+- Assigned each Core Motion sample and advanced gameplay together on the main
+  thread, avoiding cross-thread acceleration state races and stale queued reads.
+
 ## 2026-06-10
 
 - Resolved boundaries and walls before outcome collisions, evaluated exit and
