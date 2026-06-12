@@ -35,6 +35,14 @@ def read(relative_path):
     return (ROOT / relative_path).read_text(encoding="utf-8", errors="replace")
 
 
+def markdown_section(text, heading):
+    match = re.search(
+        rf"(?ms)^## {re.escape(heading)}\s*$\n(.*?)(?=^## |\Z)",
+        text,
+    )
+    return match.group(1).strip() if match else ""
+
+
 def strip_c_line_comments(text):
     return "\n".join(line.split("//", 1)[0] for line in text.splitlines())
 
@@ -426,8 +434,42 @@ def main():
             "hosted validation plan must document completed Python and simulator validation", failures)
     require("status: completed" in corrected_collision_plan and "generic iOS simulator" in corrected_collision_plan,
             "corrected collision build plan must be completed", failures)
-    require("status: completed" in main_thread_motion_plan and "mutation" in main_thread_motion_plan.lower(),
-            "main-thread motion handoff plan must record completed mutation verification", failures)
+    main_thread_motion_status = re.findall(
+        r"(?mi)^status:\s*(.+?)\s*$", main_thread_motion_plan
+    )
+    main_thread_motion_work = markdown_section(main_thread_motion_plan, "Work Completed")
+    main_thread_motion_verification = markdown_section(
+        main_thread_motion_plan, "Verification Completed"
+    )
+    require(main_thread_motion_status == ["completed"] and main_thread_motion_work,
+            "main-thread motion handoff plan must record one completed status and completed work",
+            failures)
+    require(main_thread_motion_verification and
+            not re.search(r"(?i)\b(?:pending|todo|tbd|not run)\b", main_thread_motion_verification),
+            "main-thread motion handoff plan must record finished verification without pending markers",
+            failures)
+    for evidence in [
+        "make check",
+        "make lint",
+        "make test",
+        "make build",
+        "python3 -m py_compile scripts/check-baseline.py",
+        "sh -n build.sh",
+        "git diff --check",
+        "27395230698",
+        "27395235753",
+        "27395277519",
+        "27402323504",
+        "6e06f5d1a53d3b471d192b34c2c1af70d16b4b7e",
+        "0478d9fc14bf406ce0df7d5c8362e9477075951c",
+        "dispatch_async(dispatch_get_main_queue(), ^{",
+        "APPViewController *strongSelf = weakSelf;",
+        "strongSelf.acceleration = acceleration;",
+        "[strongSelf update];",
+    ]:
+        require(evidence in main_thread_motion_verification,
+                f"main-thread motion handoff plan must preserve verification evidence: {evidence}",
+                failures)
     require(ci_workflow.count("permissions:\n  contents: read") == 1 and
             not re.search(r"(?m)^\s{2,}permissions:\s*$", ci_workflow) and
             not re.search(r"(?m)^\s+[A-Za-z0-9_-]+:\s*write\s*$", ci_workflow) and
