@@ -22,6 +22,7 @@ PREVIOUS_POINT_PLAN = ROOT / "docs/plans/2026-06-10-previous-point-initializatio
 CI_PLAN = ROOT / "docs/plans/2026-06-10-ci-baseline.md"
 HOSTED_VALIDATION_PLAN = ROOT / "docs/plans/2026-06-10-hosted-project-validation.md"
 CORRECTED_COLLISION_PLAN = ROOT / "docs/plans/2026-06-10-corrected-collision-build.md"
+MAIN_THREAD_MOTION_PLAN = ROOT / "docs/plans/2026-06-12-main-thread-motion-handoff.md"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -110,6 +111,7 @@ def main():
         "docs/plans/2026-06-10-ci-baseline.md",
         "docs/plans/2026-06-10-hosted-project-validation.md",
         "docs/plans/2026-06-10-corrected-collision-build.md",
+        "docs/plans/2026-06-12-main-thread-motion-handoff.md",
         "docs/readme-overview.svg",
     ]
 
@@ -165,6 +167,7 @@ def main():
     ci_plan = CI_PLAN.read_text(encoding="utf-8") if CI_PLAN.exists() else ""
     hosted_validation_plan = HOSTED_VALIDATION_PLAN.read_text(encoding="utf-8") if HOSTED_VALIDATION_PLAN.exists() else ""
     corrected_collision_plan = CORRECTED_COLLISION_PLAN.read_text(encoding="utf-8") if CORRECTED_COLLISION_PLAN.exists() else ""
+    main_thread_motion_plan = MAIN_THREAD_MOTION_PLAN.read_text(encoding="utf-8") if MAIN_THREAD_MOTION_PLAN.exists() else ""
 
     shell_result = subprocess.run(["sh", "-n", "build.sh"], cwd=str(ROOT), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     require(shell_result.returncode == 0,
@@ -211,10 +214,17 @@ def main():
     require("error != nil || accelerometerData == nil" in source and "- (void)dealloc" in source,
             "Objective-C source must ignore unavailable motion samples and stop updates during teardown",
             failures)
+    sample_capture_index = view_controller.find("CMAcceleration acceleration = accelerometerData.acceleration;")
+    main_dispatch_index = view_controller.find("dispatch_async(dispatch_get_main_queue(), ^{")
+    strong_capture_index = view_controller.find("APPViewController *strongSelf = weakSelf;", main_dispatch_index)
+    sample_assignment_index = view_controller.find("strongSelf.acceleration = acceleration;", main_dispatch_index)
+    update_index = view_controller.find("[strongSelf update];", main_dispatch_index)
     require("__weak APPViewController *weakSelf = self;" in source and
-            "APPViewController *strongSelf = weakSelf;" in source and
-            "strongSelf.acceleration = accelerometerData.acceleration;" in source,
-            "accelerometer callback must avoid strongly retaining the view controller",
+            sample_capture_index != -1 and main_dispatch_index != -1 and
+            strong_capture_index != -1 and sample_assignment_index != -1 and update_index != -1 and
+            sample_capture_index < main_dispatch_index < strong_capture_index < sample_assignment_index < update_index and
+            "performSelectorOnMainThread" not in source,
+            "accelerometer samples must resolve weak capture, assign state, and update together on the main thread",
             failures)
     require("NSTimeInterval secondsSinceLastDraw = -([self.lastUpdateTime timeIntervalSinceNow]);" in source and
             "secondsSinceLastDraw = MAX(0, MIN(secondsSinceLastDraw, 0.1));" in source,
@@ -416,6 +426,8 @@ def main():
             "hosted validation plan must document completed Python and simulator validation", failures)
     require("status: completed" in corrected_collision_plan and "generic iOS simulator" in corrected_collision_plan,
             "corrected collision build plan must be completed", failures)
+    require("status: completed" in main_thread_motion_plan and "mutation" in main_thread_motion_plan.lower(),
+            "main-thread motion handoff plan must record completed mutation verification", failures)
     require(ci_workflow.count("permissions:\n  contents: read") == 1 and
             not re.search(r"(?m)^\s{2,}permissions:\s*$", ci_workflow) and
             not re.search(r"(?m)^\s+[A-Za-z0-9_-]+:\s*write\s*$", ci_workflow) and

@@ -19,6 +19,7 @@ Priority:
 - Keep the screenshot and README aligned with app behavior
 - Maintain the build script and Xcode project structure
 - Keep accelerometer updates bounded to the live controller lifecycle
+- Assign and integrate each accelerometer sample together on the main thread
 - Gate collision alerts so repeated frames do not stack modal alerts
 - Reset movement velocity after failure collisions send the player to start
 - Keep previous position initialized for wall-collision rollback
@@ -61,7 +62,7 @@ Current baseline: `make lint`, `make test`, `make build`, and `make check` run
 `scripts/check-baseline.py` without Xcode, while hosted macOS CI also compiles
 the unsigned app for a generic iOS simulator. The baseline verifies `build.sh`,
 plist/XIB/scheme XML, image resources, Xcode project references, accelerometer
-lifecycle guardrails, frame time delta clamping, collision alert gating, failure
+lifecycle and main-thread handoff guardrails, frame time delta clamping, collision alert gating, failure
 velocity reset behavior, previous position initialization, win completion update
 guarding, and alert pause behavior, with local-only gameplay and alert frame
 clock reset behavior, with no debug logging, network, analytics, upload, or
