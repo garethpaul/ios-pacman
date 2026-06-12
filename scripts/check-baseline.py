@@ -19,6 +19,7 @@ ALERT_CLOCK_PLAN = ROOT / "docs/plans/2026-06-09-alert-frame-clock-reset.md"
 FAILURE_VELOCITY_PLAN = ROOT / "docs/plans/2026-06-09-failure-velocity-reset.md"
 WIN_COMPLETION_PLAN = ROOT / "docs/plans/2026-06-09-win-completion-update-guard.md"
 PREVIOUS_POINT_PLAN = ROOT / "docs/plans/2026-06-10-previous-point-initialization.md"
+CI_PLAN = ROOT / "docs/plans/2026-06-10-ci-baseline.md"
 HOSTED_VALIDATION_PLAN = ROOT / "docs/plans/2026-06-10-hosted-project-validation.md"
 CORRECTED_COLLISION_PLAN = ROOT / "docs/plans/2026-06-10-corrected-collision-build.md"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
@@ -106,6 +107,7 @@ def main():
         "docs/plans/2026-06-09-failure-velocity-reset.md",
         "docs/plans/2026-06-09-win-completion-update-guard.md",
         "docs/plans/2026-06-10-previous-point-initialization.md",
+        "docs/plans/2026-06-10-ci-baseline.md",
         "docs/plans/2026-06-10-hosted-project-validation.md",
         "docs/plans/2026-06-10-corrected-collision-build.md",
         "docs/readme-overview.svg",
@@ -147,6 +149,7 @@ def main():
     vision = read("VISION.md")
     security = read("SECURITY.md")
     changes = read("CHANGES.md")
+    ci_workflow = read(".github/workflows/check.yml")
     gitignore = read(".gitignore")
     makefile = read("Makefile")
     baseline_plan = BASELINE_PLAN.read_text(encoding="utf-8") if BASELINE_PLAN.exists() else ""
@@ -159,9 +162,9 @@ def main():
     failure_velocity_plan = FAILURE_VELOCITY_PLAN.read_text(encoding="utf-8") if FAILURE_VELOCITY_PLAN.exists() else ""
     win_completion_plan = WIN_COMPLETION_PLAN.read_text(encoding="utf-8") if WIN_COMPLETION_PLAN.exists() else ""
     previous_point_plan = PREVIOUS_POINT_PLAN.read_text(encoding="utf-8") if PREVIOUS_POINT_PLAN.exists() else ""
+    ci_plan = CI_PLAN.read_text(encoding="utf-8") if CI_PLAN.exists() else ""
     hosted_validation_plan = HOSTED_VALIDATION_PLAN.read_text(encoding="utf-8") if HOSTED_VALIDATION_PLAN.exists() else ""
     corrected_collision_plan = CORRECTED_COLLISION_PLAN.read_text(encoding="utf-8") if CORRECTED_COLLISION_PLAN.exists() else ""
-    workflow = read(".github/workflows/check.yml")
 
     shell_result = subprocess.run(["sh", "-n", "build.sh"], cwd=str(ROOT), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     require(shell_result.returncode == 0,
@@ -298,6 +301,9 @@ def main():
     require("make lint" in readme and "make test" in readme and "make build" in readme and "make check" in readme and "build.sh" in readme and "Maze.xcodeproj" in readme,
             "README must document static verification, build script, and project usage",
             failures)
+    require("GitHub Actions" in readme,
+            "README must document the hosted GitHub Actions baseline",
+            failures)
     require("local game" in readme.lower() and "asset" in readme.lower() and
             "accelerometer" in readme.lower() and "time delta" in readme.lower() and "collision alert" in readme.lower() and "alert pause" in readme.lower(),
             "README must document local-only gameplay, asset checks, accelerometer lifecycle, collision-alert, and time delta guardrails",
@@ -318,6 +324,9 @@ def main():
             "time delta" in vision.lower() and "collision alert" in vision.lower() and "alert pause" in vision.lower(),
             "VISION must describe the current static Objective-C game baseline",
             failures)
+    require("GitHub Actions" in vision,
+            "VISION must document the hosted verification baseline",
+            failures)
     require("frame clock" in vision.lower(),
             "VISION must describe alert frame clock reset behavior",
             failures)
@@ -333,6 +342,9 @@ def main():
     require("build.sh" in security and "make check" in security and "collision alert" in security.lower() and
             "alert pause" in security.lower() and "frame clock" in security.lower(),
             "SECURITY must document build script and static baseline guardrails",
+            failures)
+    require("GitHub Actions" in security,
+            "SECURITY must document the hosted static baseline",
             failures)
     require("velocity reset" in security.lower(),
             "SECURITY must document failure velocity reset guardrails",
@@ -360,6 +372,18 @@ def main():
     require("previous position" in changes.lower(),
             "CHANGES must record previous-position initialization behavior",
             failures)
+    require("GitHub Actions" in changes,
+            "CHANGES must record hosted baseline coverage",
+            failures)
+    require("corrected candidate frame" in changes and "unsigned generic-simulator" in changes,
+            "CHANGES must record corrected collision and hosted build behavior",
+            failures)
+    require("actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065" in ci_workflow and
+            'python-version: "3.12"' in ci_workflow and
+            "persist-credentials: false" in ci_workflow and
+            "make check" in ci_workflow,
+            "GitHub Actions workflow must use credential-free checkout, pinned Python 3.12, and make check",
+            failures)
     require("status: completed" in baseline_plan and "status: completed" in motion_capture_plan and
             "status: completed" in time_delta_plan and "status: completed" in collision_alert_plan,
             "plans must be marked completed",
@@ -382,14 +406,26 @@ def main():
     require("status: completed" in previous_point_plan,
             "previous point initialization plan must be marked completed",
             failures)
-    require("status: completed" in hosted_validation_plan and "make check" in hosted_validation_plan,
-            "hosted validation plan must be completed", failures)
+    require("status: completed" in ci_plan and "make check" in ci_plan and
+            "Python" in ci_plan and "3.12" in ci_plan and "credential persistence disabled" in ci_plan and
+            "generic-simulator" in ci_plan,
+            "CI baseline plan must document completed credential-free Python and simulator validation",
+            failures)
+    require("status: completed" in hosted_validation_plan and "make check" in hosted_validation_plan and
+            "Python 3.12" in hosted_validation_plan and "generic iOS simulator" in hosted_validation_plan,
+            "hosted validation plan must document completed Python and simulator validation", failures)
     require("status: completed" in corrected_collision_plan and "generic iOS simulator" in corrected_collision_plan,
             "corrected collision build plan must be completed", failures)
-    require("permissions:\n  contents: read" in workflow and "cancel-in-progress: true" in workflow and
-            "runs-on: macos-15" in workflow and "timeout-minutes: 10" in workflow and
-            "actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10" in workflow and
-            "run: make check" in workflow,
+    require(ci_workflow.count("permissions:\n  contents: read") == 1 and
+            not re.search(r"(?m)^\s{2,}permissions:\s*$", ci_workflow) and
+            not re.search(r"(?m)^\s+[A-Za-z0-9_-]+:\s*write\s*$", ci_workflow) and
+            "cancel-in-progress: true" in ci_workflow and
+            "runs-on: macos-15" in ci_workflow and "timeout-minutes: 10" in ci_workflow and
+            ci_workflow.count("uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10") == 1 and
+            "persist-credentials: false" in ci_workflow and
+            ci_workflow.count("uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065") == 1 and
+            'python-version: "3.12"' in ci_workflow and
+            "run: make check" in ci_workflow,
             "Check workflow contract must stay pinned, read-only, and bounded", failures)
 
     if shutil.which("xcodebuild"):

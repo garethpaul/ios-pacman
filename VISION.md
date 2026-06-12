@@ -32,6 +32,8 @@ Priority:
   references, Xcode metadata, Objective-C source inventory, and local-only gameplay
 - Keep `make lint`, `make test`, `make build`, and `make check` available as
   local verification gates
+- Keep GitHub Actions running the same static `make check` baseline for pushes
+  and pull requests
 
 Next priorities:
 
@@ -65,6 +67,7 @@ guarding, and alert pause behavior, with local-only gameplay and alert frame
 clock reset behavior, with no debug logging, network, analytics, upload, or
 persistence behavior.
 It also verifies that motion callbacks avoid strongly retaining the controller.
+GitHub Actions runs that static baseline with Python 3.12.
 
 ## What We Will Not Merge (For Now)
 

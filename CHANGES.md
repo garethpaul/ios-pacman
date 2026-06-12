@@ -9,7 +9,8 @@
   parsing to an unsigned generic-simulator app build.
 - Initialized the previous position to the starting position so first-frame wall
   collision rollback does not use the zero-value point.
-- Added pinned, read-only macOS CI that parses `Maze.xcodeproj` through `make check`.
+- Added pinned, read-only macOS GitHub Actions CI with Python 3.12 and no
+  persisted checkout credentials; `make check` compiles the unsigned app.
 
 ## 2026-06-09
 

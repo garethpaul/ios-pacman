@@ -35,6 +35,8 @@ Helpful reports include:
 - Collision alerts should stay gated while visible so repeated collision frames do not stack duplicate modal prompts, failure collision handling should apply a velocity reset before prompting, previous position initialization should keep wall-collision rollback aligned with the starting point, win completion should stop future movement updates after the exit alert, alert pause behavior should stop movement updates behind those prompts, and alert dismissal should reset the frame clock before movement resumes.
 - Boundary and wall constraints should be resolved before exit and ghost outcomes, which must use the corrected candidate frame and stop after a terminal win.
 - `make check` runs a static baseline that guards image/XIB references, plist/scheme metadata, Xcode project wiring, shell syntax, source inventory, and local-only gameplay behavior when Xcode is unavailable.
+- GitHub Actions runs the same static baseline with Python 3.12 for pushes and
+  pull requests.
 
 ## Mobile Privacy Notes
 
