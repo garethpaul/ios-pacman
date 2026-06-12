@@ -4,6 +4,8 @@
 
 - Initialized the previous position to the starting position so first-frame wall
   collision rollback does not use the zero-value point.
+- Added a GitHub Actions workflow that runs the static `make check` baseline
+  with Python 3.12 for pushes and pull requests.
 
 ## 2026-06-09
 

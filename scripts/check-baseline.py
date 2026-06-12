@@ -19,6 +19,7 @@ ALERT_CLOCK_PLAN = ROOT / "docs/plans/2026-06-09-alert-frame-clock-reset.md"
 FAILURE_VELOCITY_PLAN = ROOT / "docs/plans/2026-06-09-failure-velocity-reset.md"
 WIN_COMPLETION_PLAN = ROOT / "docs/plans/2026-06-09-win-completion-update-guard.md"
 PREVIOUS_POINT_PLAN = ROOT / "docs/plans/2026-06-10-previous-point-initialization.md"
+CI_PLAN = ROOT / "docs/plans/2026-06-10-ci-baseline.md"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -66,6 +67,7 @@ def main():
     failures = []
     required_files = [
         ".gitignore",
+        ".github/workflows/check.yml",
         ".travis.yml",
         "CHANGES.md",
         "Makefile",
@@ -103,6 +105,7 @@ def main():
         "docs/plans/2026-06-09-failure-velocity-reset.md",
         "docs/plans/2026-06-09-win-completion-update-guard.md",
         "docs/plans/2026-06-10-previous-point-initialization.md",
+        "docs/plans/2026-06-10-ci-baseline.md",
         "docs/readme-overview.svg",
     ]
 
@@ -142,6 +145,7 @@ def main():
     vision = read("VISION.md")
     security = read("SECURITY.md")
     changes = read("CHANGES.md")
+    ci_workflow = read(".github/workflows/check.yml")
     gitignore = read(".gitignore")
     makefile = read("Makefile")
     baseline_plan = BASELINE_PLAN.read_text(encoding="utf-8") if BASELINE_PLAN.exists() else ""
@@ -154,6 +158,7 @@ def main():
     failure_velocity_plan = FAILURE_VELOCITY_PLAN.read_text(encoding="utf-8") if FAILURE_VELOCITY_PLAN.exists() else ""
     win_completion_plan = WIN_COMPLETION_PLAN.read_text(encoding="utf-8") if WIN_COMPLETION_PLAN.exists() else ""
     previous_point_plan = PREVIOUS_POINT_PLAN.read_text(encoding="utf-8") if PREVIOUS_POINT_PLAN.exists() else ""
+    ci_plan = CI_PLAN.read_text(encoding="utf-8") if CI_PLAN.exists() else ""
 
     shell_result = subprocess.run(["sh", "-n", "build.sh"], cwd=str(ROOT), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     require(shell_result.returncode == 0,
@@ -271,6 +276,9 @@ def main():
     require("make lint" in readme and "make test" in readme and "make build" in readme and "make check" in readme and "build.sh" in readme and "Maze.xcodeproj" in readme,
             "README must document static verification, build script, and project usage",
             failures)
+    require("GitHub Actions" in readme,
+            "README must document the hosted GitHub Actions baseline",
+            failures)
     require("local game" in readme.lower() and "asset" in readme.lower() and
             "accelerometer" in readme.lower() and "time delta" in readme.lower() and "collision alert" in readme.lower() and "alert pause" in readme.lower(),
             "README must document local-only gameplay, asset checks, accelerometer lifecycle, collision-alert, and time delta guardrails",
@@ -291,6 +299,9 @@ def main():
             "time delta" in vision.lower() and "collision alert" in vision.lower() and "alert pause" in vision.lower(),
             "VISION must describe the current static Objective-C game baseline",
             failures)
+    require("GitHub Actions" in vision,
+            "VISION must document the hosted verification baseline",
+            failures)
     require("frame clock" in vision.lower(),
             "VISION must describe alert frame clock reset behavior",
             failures)
@@ -306,6 +317,9 @@ def main():
     require("build.sh" in security and "make check" in security and "collision alert" in security.lower() and
             "alert pause" in security.lower() and "frame clock" in security.lower(),
             "SECURITY must document build script and static baseline guardrails",
+            failures)
+    require("GitHub Actions" in security,
+            "SECURITY must document the hosted static baseline",
             failures)
     require("velocity reset" in security.lower(),
             "SECURITY must document failure velocity reset guardrails",
@@ -333,6 +347,14 @@ def main():
     require("previous position" in changes.lower(),
             "CHANGES must record previous-position initialization behavior",
             failures)
+    require("GitHub Actions" in changes,
+            "CHANGES must record hosted baseline coverage",
+            failures)
+    require("actions/setup-python@v5" in ci_workflow and
+            'python-version: "3.12"' in ci_workflow and
+            "make check" in ci_workflow,
+            "GitHub Actions workflow must install Python 3.12 and run make check",
+            failures)
     require("status: completed" in baseline_plan and "status: completed" in motion_capture_plan and
             "status: completed" in time_delta_plan and "status: completed" in collision_alert_plan,
             "plans must be marked completed",
@@ -354,6 +376,9 @@ def main():
             failures)
     require("status: completed" in previous_point_plan,
             "previous point initialization plan must be marked completed",
+            failures)
+    require("status: completed" in ci_plan and "make check" in ci_plan,
+            "CI baseline plan must be marked completed with make check verification",
             failures)
 
     if shutil.which("xcodebuild"):
