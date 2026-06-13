@@ -111,6 +111,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   baseline.
 - See `docs/plans/2026-06-09-make-gate-aliases.md` for the local gate alias guardrail.
 - Run `make lint`, `make test`, `make build`, and `make check` before pushing changes to Objective-C sources, plist/XIB files, image assets, Xcode metadata, `build.sh`, or gameplay/security documentation.
+- The same gates may be invoked through an absolute Makefile path from another
+  directory; verification resolves both commands relative to the checkout.
 
 ## Contributing
 

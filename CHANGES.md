@@ -2,6 +2,8 @@
 
 ## 2026-06-13
 
+- Made all Make verification aliases location-independent when invoked through
+  an absolute Makefile path.
 - Rejected non-finite motion samples before main-thread gameplay assignment and
   update.
 
