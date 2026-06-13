@@ -23,6 +23,7 @@ CI_PLAN = ROOT / "docs/plans/2026-06-10-ci-baseline.md"
 HOSTED_VALIDATION_PLAN = ROOT / "docs/plans/2026-06-10-hosted-project-validation.md"
 CORRECTED_COLLISION_PLAN = ROOT / "docs/plans/2026-06-10-corrected-collision-build.md"
 MAIN_THREAD_MOTION_PLAN = ROOT / "docs/plans/2026-06-12-main-thread-motion-handoff.md"
+FINITE_MOTION_PLAN = ROOT / "docs/plans/2026-06-13-nonfinite-motion-sample-guard.md"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -120,6 +121,7 @@ def main():
         "docs/plans/2026-06-10-hosted-project-validation.md",
         "docs/plans/2026-06-10-corrected-collision-build.md",
         "docs/plans/2026-06-12-main-thread-motion-handoff.md",
+        "docs/plans/2026-06-13-nonfinite-motion-sample-guard.md",
         "docs/readme-overview.svg",
     ]
 
@@ -176,6 +178,7 @@ def main():
     hosted_validation_plan = HOSTED_VALIDATION_PLAN.read_text(encoding="utf-8") if HOSTED_VALIDATION_PLAN.exists() else ""
     corrected_collision_plan = CORRECTED_COLLISION_PLAN.read_text(encoding="utf-8") if CORRECTED_COLLISION_PLAN.exists() else ""
     main_thread_motion_plan = MAIN_THREAD_MOTION_PLAN.read_text(encoding="utf-8") if MAIN_THREAD_MOTION_PLAN.exists() else ""
+    finite_motion_plan = FINITE_MOTION_PLAN.read_text(encoding="utf-8") if FINITE_MOTION_PLAN.exists() else ""
 
     shell_result = subprocess.run(["sh", "-n", "build.sh"], cwd=str(ROOT), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     require(shell_result.returncode == 0,
@@ -222,17 +225,21 @@ def main():
     require("error != nil || accelerometerData == nil" in source and "- (void)dealloc" in source,
             "Objective-C source must ignore unavailable motion samples and stop updates during teardown",
             failures)
-    sample_capture_index = view_controller.find("CMAcceleration acceleration = accelerometerData.acceleration;")
-    main_dispatch_index = view_controller.find("dispatch_async(dispatch_get_main_queue(), ^{")
+    callback_index = view_controller.find("startAccelerometerUpdatesToQueue:self.queue withHandler:")
+    sample_capture_index = view_controller.find("CMAcceleration acceleration = accelerometerData.acceleration;", callback_index)
+    finite_guard = "if (!isfinite(acceleration.x) || !isfinite(acceleration.y) || !isfinite(acceleration.z)) {\n             return;\n         }"
+    finite_guard_index = view_controller.find(finite_guard, sample_capture_index)
+    main_dispatch_index = view_controller.find("dispatch_async(dispatch_get_main_queue(), ^{", sample_capture_index)
     strong_capture_index = view_controller.find("APPViewController *strongSelf = weakSelf;", main_dispatch_index)
     sample_assignment_index = view_controller.find("strongSelf.acceleration = acceleration;", main_dispatch_index)
     update_index = view_controller.find("[strongSelf update];", main_dispatch_index)
-    require("__weak APPViewController *weakSelf = self;" in source and
-            sample_capture_index != -1 and main_dispatch_index != -1 and
+    require("#import <math.h>" in view_controller and
+            "__weak APPViewController *weakSelf = self;" in source and
+            callback_index != -1 and sample_capture_index != -1 and finite_guard_index != -1 and main_dispatch_index != -1 and
             strong_capture_index != -1 and sample_assignment_index != -1 and update_index != -1 and
-            sample_capture_index < main_dispatch_index < strong_capture_index < sample_assignment_index < update_index and
+            callback_index < sample_capture_index < finite_guard_index < main_dispatch_index < strong_capture_index < sample_assignment_index < update_index and
             "performSelectorOnMainThread" not in source,
-            "accelerometer samples must resolve weak capture, assign state, and update together on the main thread",
+            "accelerometer samples must reject non-finite components before main-thread assignment and update",
             failures)
     require("NSTimeInterval secondsSinceLastDraw = -([self.lastUpdateTime timeIntervalSinceNow]);" in source and
             "secondsSinceLastDraw = MAX(0, MIN(secondsSinceLastDraw, 0.1));" in source,
@@ -338,6 +345,9 @@ def main():
     require("previous position" in readme.lower(),
             "README must document previous-position initialization behavior",
             failures)
+    require("non-finite motion" in readme.lower(),
+            "README must document invalid sensor sample rejection",
+            failures)
     require("scripts/check-baseline.py" in vision and "make lint" in vision and "make test" in vision and "make build" in vision and "asset" in vision.lower() and
             "time delta" in vision.lower() and "collision alert" in vision.lower() and "alert pause" in vision.lower(),
             "VISION must describe the current static Objective-C game baseline",
@@ -357,6 +367,9 @@ def main():
     require("previous position" in vision.lower(),
             "VISION must describe previous-position initialization behavior",
             failures)
+    require("non-finite motion" in vision.lower(),
+            "VISION must describe invalid sensor sample rejection",
+            failures)
     require("build.sh" in security and "make check" in security and "collision alert" in security.lower() and
             "alert pause" in security.lower() and "frame clock" in security.lower(),
             "SECURITY must document build script and static baseline guardrails",
@@ -372,6 +385,9 @@ def main():
             failures)
     require("previous position" in security.lower(),
             "SECURITY must document previous-position initialization guardrails",
+            failures)
+    require("non-finite motion" in security.lower(),
+            "SECURITY must document invalid sensor sample guardrails",
             failures)
     require("/bin/sh" in changes and "without Xcode" in changes and "accelerometer" in changes and
             "weak" in changes.lower() and "time delta" in changes.lower() and
@@ -389,6 +405,9 @@ def main():
             failures)
     require("previous position" in changes.lower(),
             "CHANGES must record previous-position initialization behavior",
+            failures)
+    require("non-finite motion" in changes.lower(),
+            "CHANGES must record invalid sensor sample rejection",
             failures)
     require("GitHub Actions" in changes,
             "CHANGES must record hosted baseline coverage",
@@ -434,6 +453,11 @@ def main():
             "hosted validation plan must document completed Python and simulator validation", failures)
     require("status: completed" in corrected_collision_plan and "generic iOS simulator" in corrected_collision_plan,
             "corrected collision build plan must be completed", failures)
+    require("status: completed" in finite_motion_plan and
+            "All four Make gates" in finite_motion_plan and
+            "hostile mutations" in finite_motion_plan.lower(),
+            "non-finite motion sample plan must record completed status and verification",
+            failures)
     main_thread_motion_status = re.findall(
         r"(?mi)^status:\s*(.+?)\s*$", main_thread_motion_plan
     )

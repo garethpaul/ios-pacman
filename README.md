@@ -53,7 +53,7 @@ The checked-in project has no external dependency manifest. Use Xcode for full b
 
 - Open `Maze.xcodeproj` in Xcode, choose the app or sample scheme, and run it on the matching simulator/device.
 - Run `./build.sh` when the required platform toolchain is installed. On hosts without Xcode, the script exits cleanly after reporting that the Xcode build was skipped.
-- This is a local game sample with XIB-wired image assets and CoreMotion movement. Each accelerometer sample is assigned and integrated together on the main thread. Gameplay updates clamp the frame time delta before applying accelerometer velocity, resolve boundary and wall constraints before evaluating the corrected collision frame, stop outcome checks after a win, gate collision alerts while visible, and reset the frame clock after alerts. Do not add accounts, analytics, persistence, upload, or network behavior without a dedicated design and security review.
+- This is a local game sample with XIB-wired image assets and CoreMotion movement. Non-finite motion samples are rejected before each valid accelerometer sample is assigned and integrated together on the main thread. Gameplay updates clamp the frame time delta before applying accelerometer velocity, resolve boundary and wall constraints before evaluating the corrected collision frame, stop outcome checks after a win, gate collision alerts while visible, and reset the frame clock after alerts. Do not add accounts, analytics, persistence, upload, or network behavior without a dedicated design and security review.
 
 ## Testing and Verification
 
@@ -92,7 +92,7 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Review changes touching network requests, sockets, or service endpoints; examples from the scan include Maze/Maze-Info.plist.
 - Review changes touching file, media, JSON, XML, CSV, OCR, or data parsing; examples from the scan include Maze/APPViewController.m, Maze/Maze-Info.plist.
 - Resource changes should keep image files, XIB outlets, screenshot, and Xcode project references aligned.
-- Accelerometer callbacks should not strongly retain the controller; motion updates should remain bounded to the live game screen.
+- Accelerometer callbacks should not strongly retain the controller; non-finite motion samples should be rejected and valid updates should remain bounded to the live game screen.
 - `build.sh` should stay valid for `/bin/sh` because CI and local shells may not invoke bash.
 
 ## Maintenance Notes
@@ -105,6 +105,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - See `docs/plans/2026-06-09-failure-velocity-reset.md` for the failure velocity reset guardrail.
 - See `docs/plans/2026-06-09-win-completion-update-guard.md` for the win completion update guardrail.
 - See `docs/plans/2026-06-10-previous-point-initialization.md` for the previous position initialization guardrail.
+- See `docs/plans/2026-06-13-nonfinite-motion-sample-guard.md` for the sensor
+  value guardrail.
 - See `docs/plans/2026-06-10-ci-baseline.md` for the GitHub Actions static
   baseline.
 - See `docs/plans/2026-06-09-make-gate-aliases.md` for the local gate alias guardrail.

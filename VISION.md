@@ -20,6 +20,7 @@ Priority:
 - Maintain the build script and Xcode project structure
 - Keep accelerometer updates bounded to the live controller lifecycle
 - Assign and integrate each accelerometer sample together on the main thread
+- Reject non-finite motion samples before they enter gameplay state
 - Gate collision alerts so repeated frames do not stack modal alerts
 - Reset movement velocity after failure collisions send the player to start
 - Keep previous position initialized for wall-collision rollback

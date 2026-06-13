@@ -1,6 +1,6 @@
 # Non-Finite Motion Sample Guard
 
-status: planned
+status: completed
 
 ## Context
 
@@ -52,17 +52,25 @@ controller state and later frame calculations.
 - Do not claim device or simulator motion validation without Xcode and a motion
   input source.
 
-## Verification
+## Work Completed
 
-- `make lint`
-- `make test`
-- `make build`
-- `make check`
-- `python3 -m py_compile scripts/check-baseline.py`
-- Parse plist, XIB, scheme, workspace, project, workflow, SVG, and PNG metadata
-  with all available local parsers.
-- `sh -n build.sh`
-- `git diff --check`
-- Hostile mutations removing a component check, moving validation after
-  dispatch, weakening callback ordering, or falsifying plan evidence must be
+- Rejected accelerometer samples with a non-finite x, y, or z component before
+  main-queue dispatch.
+- Preserved weak controller capture and kept valid-sample assignment and update
+  together on the main thread.
+- Extended the static baseline with callback-scoped validation and ordering
+  contracts and documented the sensor boundary.
+
+## Verification Completed
+
+- All four Make gates, `make lint`, `make test`, `make build`, and `make check`,
+  passed against the complete static baseline.
+- `python3 -m py_compile scripts/check-baseline.py`, plist parsing, XIB, scheme,
+  workspace, and SVG XML parsing, workflow YAML parsing, PNG signature/type
+  checks, `sh -n build.sh`, and `git diff --check` passed.
+- Ten hostile mutations removing any component predicate, the math import,
+  the finite predicate, early return, validation-before-dispatch ordering, or
+  main-queue dispatch, or falsifying plan status or verification evidence were
   rejected.
+- The local environment did not provide `xcodebuild` or a motion input source,
+  so device/simulator gameplay and accelerometer execution were not claimed.

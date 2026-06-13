@@ -1,5 +1,10 @@
 # Changes
 
+## 2026-06-13
+
+- Rejected non-finite motion samples before main-thread gameplay assignment and
+  update.
+
 ## 2026-06-12
 
 - Assigned each Core Motion sample and advanced gameplay together on the main
