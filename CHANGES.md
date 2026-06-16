@@ -1,5 +1,10 @@
 # Changes
 
+## 2026-06-16
+
+- Added executable C tests for finite accelerometer samples using the same
+  predicate as the CoreMotion callback.
+
 ## 2026-06-13
 
 - Made all Make verification aliases location-independent when invoked through

@@ -3,6 +3,7 @@
 //
 
 #import "APPViewController.h"
+#import "APPMotionValidation.h"
 #import <math.h>
 
 @interface APPViewController ()
@@ -65,7 +66,7 @@
              return;
          }
          CMAcceleration acceleration = accelerometerData.acceleration;
-         if (!isfinite(acceleration.x) || !isfinite(acceleration.y) || !isfinite(acceleration.z)) {
+         if (!APPMotionComponentsAreFinite(acceleration.x, acceleration.y, acceleration.z)) {
              return;
          }
          dispatch_async(dispatch_get_main_queue(), ^{

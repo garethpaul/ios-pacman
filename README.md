@@ -7,7 +7,7 @@
 
 `garethpaul/ios-pacman` is an Apple platform application or Swift sample. Pacman iOS Game
 
-This README is based on the checked-in source, manifests, scripts, and repository metadata on the `master` branch. The project language mix found during review was: Objective-C (3), C/C++ headers (2), shell (1).
+This README is based on the checked-in source, manifests, scripts, and repository metadata on the `master` branch. The project language mix found during review was: Objective-C (3), C (2), C/C++ headers (3), shell (2).
 
 ## Repository Contents
 
@@ -70,7 +70,16 @@ The `lint`, `test`, and `build` targets intentionally alias the static baseline
 on hosts without the legacy Xcode toolchain, so the standard local gate commands
 stay available while preserving the single source of truth.
 
-The baseline runs `scripts/check-baseline.py`, validates POSIX shell syntax for `build.sh`, parses plist/XIB/scheme XML, checks PNG resources, verifies Xcode project references, checks corrected collision ordering and candidate-frame use, accelerometer lifecycle and main-thread handoff, collision alert gating, failure velocity reset behavior, previous position initialization, win completion update guards, alert pause behavior, alert frame clock reset behavior, frame time delta clamping, and weak callback capture guardrails, and guards against debug logging, network, analytics, upload, or persistence behavior.
+The baseline first compiles and runs executable C tests against the same finite
+motion-sample predicate used by the CoreMotion callback. It then runs
+`scripts/check-baseline.py`, validates POSIX shell syntax for `build.sh`, parses
+plist/XIB/scheme XML, checks PNG resources, verifies Xcode project references,
+checks corrected collision ordering and candidate-frame use, accelerometer
+lifecycle and main-thread handoff, collision alert gating, failure velocity
+reset behavior, previous position initialization, win completion update guards,
+alert pause behavior, alert frame clock reset behavior, frame time delta
+clamping, and weak callback capture guardrails, and guards against debug
+logging, network, analytics, upload, or persistence behavior.
 
 Pinned `macos-15` CI runs `make check` and compiles the unsigned app for a
 generic iOS simulator. It does not exercise accelerometer input, alerts,
@@ -107,6 +116,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - See `docs/plans/2026-06-10-previous-point-initialization.md` for the previous position initialization guardrail.
 - See `docs/plans/2026-06-13-nonfinite-motion-sample-guard.md` for the sensor
   value guardrail.
+- See `docs/plans/2026-06-16-executable-motion-validation-tests.md` for the
+  shared finite-sample predicate and executable C behavioral gate.
 - See `docs/plans/2026-06-10-ci-baseline.md` for the GitHub Actions static
   baseline.
 - See `docs/plans/2026-06-09-make-gate-aliases.md` for the local gate alias guardrail.

@@ -22,12 +22,13 @@
 
 ## Coding conventions
 
-- Language mix noted in the README: Objective-C (3), C/C++ headers (2), shell (1).
+- Language mix noted in the README: Objective-C (3), C (2), C/C++ headers (3), shell (2).
 - Preserve legacy Xcode project settings and signing assumptions unless the change is explicitly about modernization.
 
 ## Testing guidance
 
-- No dedicated test files were detected; treat `make check` as the minimum baseline.
+- Every Make gate compiles and runs the shared motion-validation C harness before
+  static contracts and the optional Xcode simulator build.
 - Start with the narrowest relevant test or Make target, then run `make check` before handing off if the change is not documentation-only.
 - Keep README verification notes in sync when commands, fixtures, or supported toolchains change.
 

@@ -25,6 +25,7 @@ CORRECTED_COLLISION_PLAN = ROOT / "docs/plans/2026-06-10-corrected-collision-bui
 MAIN_THREAD_MOTION_PLAN = ROOT / "docs/plans/2026-06-12-main-thread-motion-handoff.md"
 FINITE_MOTION_PLAN = ROOT / "docs/plans/2026-06-13-nonfinite-motion-sample-guard.md"
 LOCATION_INDEPENDENT_MAKE_PLAN = ROOT / "docs/plans/2026-06-13-location-independent-make.md"
+MOTION_TEST_PLAN = ROOT / "docs/plans/2026-06-16-executable-motion-validation-tests.md"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -96,6 +97,8 @@ def main():
         "Maze/APPAppDelegate.m",
         "Maze/APPViewController.h",
         "Maze/APPViewController.m",
+        "Maze/APPMotionValidation.c",
+        "Maze/APPMotionValidation.h",
         "Maze/main.m",
         "Maze/en.lproj/APPViewController.xib",
         "Maze/en.lproj/InfoPlist.strings",
@@ -124,7 +127,10 @@ def main():
         "docs/plans/2026-06-12-main-thread-motion-handoff.md",
         "docs/plans/2026-06-13-nonfinite-motion-sample-guard.md",
         "docs/plans/2026-06-13-location-independent-make.md",
+        "docs/plans/2026-06-16-executable-motion-validation-tests.md",
         "docs/readme-overview.svg",
+        "Tests/APPMotionValidationTests.c",
+        "scripts/run-motion-validation-tests.sh",
     ]
 
     for relative_path in required_files:
@@ -157,6 +163,9 @@ def main():
     build_script = read("build.sh")
     view_header = read("Maze/APPViewController.h")
     view_controller = read("Maze/APPViewController.m")
+    motion_validation = read("Maze/APPMotionValidation.c")
+    motion_tests = read("Tests/APPMotionValidationTests.c")
+    motion_test_runner = read("scripts/run-motion-validation-tests.sh")
     source = "\n".join(strip_c_line_comments(path.read_text(encoding="utf-8", errors="replace"))
                        for path in sorted((ROOT / "Maze").glob("*.m")))
     readme = read("README.md")
@@ -182,6 +191,7 @@ def main():
     main_thread_motion_plan = MAIN_THREAD_MOTION_PLAN.read_text(encoding="utf-8") if MAIN_THREAD_MOTION_PLAN.exists() else ""
     finite_motion_plan = FINITE_MOTION_PLAN.read_text(encoding="utf-8") if FINITE_MOTION_PLAN.exists() else ""
     location_independent_make_plan = LOCATION_INDEPENDENT_MAKE_PLAN.read_text(encoding="utf-8") if LOCATION_INDEPENDENT_MAKE_PLAN.exists() else ""
+    motion_test_plan = MOTION_TEST_PLAN.read_text(encoding="utf-8") if MOTION_TEST_PLAN.exists() else ""
 
     shell_result = subprocess.run(["sh", "-n", "build.sh"], cwd=str(ROOT), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     require(shell_result.returncode == 0,
@@ -211,6 +221,11 @@ def main():
     require("CLANG_ENABLE_OBJC_ARC = YES;" in project and "CoreMotion.framework" in project and "QuartzCore.framework" in project,
             "Xcode project must keep ARC and gameplay framework references",
             failures)
+    require(project.count("APPMotionValidation.c in Sources") == 2 and
+            "path = APPMotionValidation.c;" in project and
+            "path = APPMotionValidation.h;" in project,
+            "Xcode project must compile shared motion validation and expose its header",
+            failures)
     for resource in ["pacman.png", "wall.png", "squareWall.png", "exit.png", "ghost.png", "APPViewController.xib"]:
         require(resource in project,
                 f"Xcode project must keep resource reference: {resource}",
@@ -230,13 +245,13 @@ def main():
             failures)
     callback_index = view_controller.find("startAccelerometerUpdatesToQueue:self.queue withHandler:")
     sample_capture_index = view_controller.find("CMAcceleration acceleration = accelerometerData.acceleration;", callback_index)
-    finite_guard = "if (!isfinite(acceleration.x) || !isfinite(acceleration.y) || !isfinite(acceleration.z)) {\n             return;\n         }"
+    finite_guard = "if (!APPMotionComponentsAreFinite(acceleration.x, acceleration.y, acceleration.z)) {\n             return;\n         }"
     finite_guard_index = view_controller.find(finite_guard, sample_capture_index)
     main_dispatch_index = view_controller.find("dispatch_async(dispatch_get_main_queue(), ^{", sample_capture_index)
     strong_capture_index = view_controller.find("APPViewController *strongSelf = weakSelf;", main_dispatch_index)
     sample_assignment_index = view_controller.find("strongSelf.acceleration = acceleration;", main_dispatch_index)
     update_index = view_controller.find("[strongSelf update];", main_dispatch_index)
-    require("#import <math.h>" in view_controller and
+    require("#import \"APPMotionValidation.h\"" in view_controller and
             "__weak APPViewController *weakSelf = self;" in source and
             callback_index != -1 and sample_capture_index != -1 and finite_guard_index != -1 and main_dispatch_index != -1 and
             strong_capture_index != -1 and sample_assignment_index != -1 and update_index != -1 and
@@ -244,6 +259,30 @@ def main():
             "performSelectorOnMainThread" not in source,
             "accelerometer samples must reject non-finite components before main-thread assignment and update",
             failures)
+    require("return isfinite(x) && isfinite(y) && isfinite(z);" in motion_validation,
+            "shared motion validation must reject every non-finite component",
+            failures)
+    for fragment in [
+        "APPMotionComponentsAreFinite(0.0, 0.0, 0.0)",
+        "APPMotionComponentsAreFinite(DBL_MAX, -DBL_MAX, DBL_MIN)",
+        "APPMotionComponentsAreFinite(NAN, 0.0, 0.0)",
+        "APPMotionComponentsAreFinite(0.0, -INFINITY, 0.0)",
+    ]:
+        require(fragment in motion_tests,
+                f"executable motion validation coverage is missing: {fragment}",
+                failures)
+    for fragment in [
+        '"$CC"',
+        '"$ROOT/Maze/APPMotionValidation.c"',
+        '"$ROOT/Tests/APPMotionValidationTests.c"',
+        '"$BUILD_DIR/motion-validation-tests"',
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+    ]:
+        require(fragment in motion_test_runner,
+                f"motion validation test runner is missing: {fragment}",
+                failures)
     require("NSTimeInterval secondsSinceLastDraw = -([self.lastUpdateTime timeIntervalSinceNow]);" in source and
             "secondsSinceLastDraw = MAX(0, MIN(secondsSinceLastDraw, 0.1));" in source,
             "gameplay updates must clamp frame time deltas before integrating accelerometer velocity",
@@ -323,12 +362,24 @@ def main():
             ".gitignore must exclude local config and Xcode build products",
             failures)
     require(".PHONY: build check lint test" in makefile and
+            "CC ?= cc" in makefile and
             "ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))" in makefile and
             "lint test build: check" in makefile and
-            'check:\n\tpython3 "$(ROOT)/scripts/check-baseline.py"\n\tcd "$(ROOT)" && ./build.sh' in makefile and
+            'CC="$(CC)" "$(ROOT)/scripts/run-motion-validation-tests.sh"' in makefile and
+            'python3 "$(ROOT)/scripts/check-baseline.py"' in makefile and
+            'cd "$(ROOT)" && ./build.sh' in makefile and
             "python3 scripts/check-baseline.py" not in makefile and
             "\n\t./build.sh" not in makefile,
             "Makefile must expose location-independent aliases and compile through the check gate when Xcode is available",
+            failures)
+    require("status: completed" in motion_test_plan and
+            "make check" in motion_test_plan and
+            "hostile mutations" in motion_test_plan.lower(),
+            "executable motion validation plan must preserve completed verification evidence",
+            failures)
+    require("docs/plans/2026-06-16-executable-motion-validation-tests.md" in readme and
+            "executable C" in readme,
+            "README must document executable motion validation coverage",
             failures)
     require("make lint" in readme and "make test" in readme and "make build" in readme and "make check" in readme and "build.sh" in readme and "Maze.xcodeproj" in readme,
             "README must document static verification, build script, and project usage",
