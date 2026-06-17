@@ -101,7 +101,9 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Review changes touching network requests, sockets, or service endpoints; examples from the scan include Maze/Maze-Info.plist.
 - Review changes touching file, media, JSON, XML, CSV, OCR, or data parsing; examples from the scan include Maze/APPViewController.m, Maze/Maze-Info.plist.
 - Resource changes should keep image files, XIB outlets, screenshot, and Xcode project references aligned.
-- Accelerometer callbacks should not strongly retain the controller; non-finite motion samples should be rejected and valid updates should remain bounded to the live game screen.
+- Accelerometer callbacks should not strongly retain the controller. Non-finite
+  motion samples should be rejected, updates should follow the active app lifecycle,
+  and stale queued motion should not cross pause/resume boundaries.
 - `build.sh` should stay valid for `/bin/sh` because CI and local shells may not invoke bash.
 
 ## Maintenance Notes
@@ -118,6 +120,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   value guardrail.
 - See `docs/plans/2026-06-16-executable-motion-validation-tests.md` for the
   shared finite-sample predicate and executable C behavioral gate.
+- See `docs/plans/2026-06-17-018-fix-active-motion-lifecycle-plan.md` for active
+  app lifecycle ownership and stale queued motion rejection.
 - See `docs/plans/2026-06-10-ci-baseline.md` for the GitHub Actions static
   baseline.
 - See `docs/plans/2026-06-09-make-gate-aliases.md` for the local gate alias guardrail.

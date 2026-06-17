@@ -31,7 +31,11 @@ Helpful reports include:
 - This should remain a local game sample. Treat new accounts, analytics, persistence, upload, networking, or telemetry as security-sensitive until the data flow and user value are documented.
 - `build.sh` is part of the supported build surface; keep it POSIX-shell compatible and review any changes to simulator destination, scheme, or signing behavior.
 - `build.sh` should skip cleanly on hosts without Xcode instead of failing after partial setup.
-- Accelerometer callbacks should avoid retaining the gameplay controller after the screen is gone; non-finite motion samples must be rejected before valid samples are assigned and integrated together on the main thread, and updates must remain tied to the live controller lifecycle.
+- Accelerometer callbacks should avoid retaining the gameplay controller after
+  the screen is gone; non-finite motion samples must be rejected before valid samples
+  are assigned and integrated on the main thread. Updates must follow the
+  active app lifecycle, and generation checks must reject stale queued motion
+  across pause/resume boundaries.
 - Collision alerts should stay gated while visible so repeated collision frames do not stack duplicate modal prompts, failure collision handling should apply a velocity reset before prompting, previous position initialization should keep wall-collision rollback aligned with the starting point, win completion should stop future movement updates after the exit alert, alert pause behavior should stop movement updates behind those prompts, and alert dismissal should reset the frame clock before movement resumes.
 - Boundary and wall constraints should be resolved before exit and ghost outcomes, which must use the corrected candidate frame and stop after a terminal win.
 - `make check` runs a static baseline that guards image/XIB references, plist/scheme metadata, Xcode project wiring, shell syntax, source inventory, and local-only gameplay behavior when Xcode is unavailable.

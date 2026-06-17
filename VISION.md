@@ -18,7 +18,8 @@ Priority:
 - Preserve the maze gameplay and asset references
 - Keep the screenshot and README aligned with app behavior
 - Maintain the build script and Xcode project structure
-- Keep accelerometer updates bounded to the live controller lifecycle
+- Keep accelerometer updates bounded to the active app lifecycle
+- Reject stale queued motion across pause/resume boundaries
 - Assign and integrate each accelerometer sample together on the main thread
 - Reject non-finite motion samples before they enter gameplay state
 - Gate collision alerts so repeated frames do not stack modal alerts
@@ -68,7 +69,8 @@ velocity reset behavior, previous position initialization, win completion update
 guarding, and alert pause behavior, with local-only gameplay and alert frame
 clock reset behavior, with no debug logging, network, analytics, upload, or
 persistence behavior.
-It also verifies that motion callbacks avoid strongly retaining the controller.
+It also verifies that motion callbacks avoid strongly retaining the controller,
+follow the active app lifecycle, and reject stale queued motion after a pause.
 GitHub Actions runs that static baseline with Python 3.12.
 
 ## What We Will Not Merge (For Now)

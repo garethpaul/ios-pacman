@@ -26,6 +26,7 @@ MAIN_THREAD_MOTION_PLAN = ROOT / "docs/plans/2026-06-12-main-thread-motion-hando
 FINITE_MOTION_PLAN = ROOT / "docs/plans/2026-06-13-nonfinite-motion-sample-guard.md"
 LOCATION_INDEPENDENT_MAKE_PLAN = ROOT / "docs/plans/2026-06-13-location-independent-make.md"
 MOTION_TEST_PLAN = ROOT / "docs/plans/2026-06-16-executable-motion-validation-tests.md"
+ACTIVE_MOTION_PLAN = ROOT / "docs/plans/2026-06-17-018-fix-active-motion-lifecycle-plan.md"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -128,6 +129,7 @@ def main():
         "docs/plans/2026-06-13-nonfinite-motion-sample-guard.md",
         "docs/plans/2026-06-13-location-independent-make.md",
         "docs/plans/2026-06-16-executable-motion-validation-tests.md",
+        "docs/plans/2026-06-17-018-fix-active-motion-lifecycle-plan.md",
         "docs/readme-overview.svg",
         "Tests/APPMotionValidationTests.c",
         "scripts/run-motion-validation-tests.sh",
@@ -161,6 +163,7 @@ def main():
     project = read("Maze.xcodeproj/project.pbxproj")
     xib = read("Maze/en.lproj/APPViewController.xib")
     build_script = read("build.sh")
+    app_delegate = read("Maze/APPAppDelegate.m")
     view_header = read("Maze/APPViewController.h")
     view_controller = read("Maze/APPViewController.m")
     motion_validation = read("Maze/APPMotionValidation.c")
@@ -192,6 +195,7 @@ def main():
     finite_motion_plan = FINITE_MOTION_PLAN.read_text(encoding="utf-8") if FINITE_MOTION_PLAN.exists() else ""
     location_independent_make_plan = LOCATION_INDEPENDENT_MAKE_PLAN.read_text(encoding="utf-8") if LOCATION_INDEPENDENT_MAKE_PLAN.exists() else ""
     motion_test_plan = MOTION_TEST_PLAN.read_text(encoding="utf-8") if MOTION_TEST_PLAN.exists() else ""
+    active_motion_plan = ACTIVE_MOTION_PLAN.read_text(encoding="utf-8") if ACTIVE_MOTION_PLAN.exists() else ""
 
     shell_result = subprocess.run(["sh", "-n", "build.sh"], cwd=str(ROOT), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     require(shell_result.returncode == 0,
@@ -243,21 +247,66 @@ def main():
     require("error != nil || accelerometerData == nil" in source and "- (void)dealloc" in source,
             "Objective-C source must ignore unavailable motion samples and stop updates during teardown",
             failures)
+    start_method_index = view_controller.find("- (void)startMotionUpdates")
+    stop_method_index = view_controller.find("- (void)stopMotionUpdates")
     callback_index = view_controller.find("startAccelerometerUpdatesToQueue:self.queue withHandler:")
+    duplicate_start_guard_index = view_controller.find(
+        "if (self.gameCompleted || [self.motionManager isAccelerometerActive]) {",
+        start_method_index,
+    )
+    generation_increment_index = view_controller.find(
+        "self.motionUpdateGeneration += 1;", duplicate_start_guard_index
+    )
+    generation_capture_index = view_controller.find(
+        "NSUInteger motionGeneration = self.motionUpdateGeneration;",
+        generation_increment_index,
+    )
+    resume_clock_index = view_controller.find(
+        "self.lastUpdateTime = [NSDate date];", generation_capture_index
+    )
     sample_capture_index = view_controller.find("CMAcceleration acceleration = accelerometerData.acceleration;", callback_index)
     finite_guard = "if (!APPMotionComponentsAreFinite(acceleration.x, acceleration.y, acceleration.z)) {\n             return;\n         }"
     finite_guard_index = view_controller.find(finite_guard, sample_capture_index)
     main_dispatch_index = view_controller.find("dispatch_async(dispatch_get_main_queue(), ^{", sample_capture_index)
     strong_capture_index = view_controller.find("APPViewController *strongSelf = weakSelf;", main_dispatch_index)
+    stale_generation_index = view_controller.find(
+        "if (strongSelf.motionUpdateGeneration != motionGeneration", strong_capture_index
+    )
     sample_assignment_index = view_controller.find("strongSelf.acceleration = acceleration;", main_dispatch_index)
     update_index = view_controller.find("[strongSelf update];", main_dispatch_index)
+    view_did_load = view_controller[view_controller.find("- (void)viewDidLoad"):start_method_index]
+    stop_method = view_controller[stop_method_index:view_controller.find("- (void)movePacman", stop_method_index)]
+    require("- (void)startMotionUpdates;" in view_header and
+            "- (void)stopMotionUpdates;" in view_header and
+            "@property (assign, nonatomic) NSUInteger motionUpdateGeneration;" in view_controller and
+            "startAccelerometerUpdatesToQueue" not in view_did_load and
+            start_method_index != -1 and stop_method_index != -1 and
+            duplicate_start_guard_index != -1 and generation_increment_index != -1 and
+            generation_capture_index != -1 and resume_clock_index != -1 and callback_index != -1 and
+            start_method_index < duplicate_start_guard_index < generation_increment_index < generation_capture_index < resume_clock_index < callback_index and
+            "self.motionUpdateGeneration += 1;" in stop_method and
+            "[self.motionManager stopAccelerometerUpdates];" in stop_method,
+            "motion ownership must use idempotent controller start/stop methods with generation invalidation and a fresh resume clock",
+            failures)
     require("#import \"APPMotionValidation.h\"" in view_controller and
             "__weak APPViewController *weakSelf = self;" in source and
             callback_index != -1 and sample_capture_index != -1 and finite_guard_index != -1 and main_dispatch_index != -1 and
-            strong_capture_index != -1 and sample_assignment_index != -1 and update_index != -1 and
-            callback_index < sample_capture_index < finite_guard_index < main_dispatch_index < strong_capture_index < sample_assignment_index < update_index and
+            strong_capture_index != -1 and stale_generation_index != -1 and
+            sample_assignment_index != -1 and update_index != -1 and
+            callback_index < sample_capture_index < finite_guard_index < main_dispatch_index < strong_capture_index < stale_generation_index < sample_assignment_index < update_index and
+            "|| ![strongSelf.motionManager isAccelerometerActive]" in view_controller[stale_generation_index:sample_assignment_index] and
             "performSelectorOnMainThread" not in source,
-            "accelerometer samples must reject non-finite components before main-thread assignment and update",
+            "accelerometer samples must reject non-finite or stale generations before main-thread assignment and update",
+            failures)
+    will_resign_index = app_delegate.find("- (void)applicationWillResignActive:")
+    did_enter_background_index = app_delegate.find("- (void)applicationDidEnterBackground:")
+    did_become_active_index = app_delegate.find("- (void)applicationDidBecomeActive:")
+    will_terminate_index = app_delegate.find("- (void)applicationWillTerminate:")
+    require(will_resign_index != -1 and did_enter_background_index != -1 and
+            did_become_active_index != -1 and will_terminate_index != -1 and
+            "[self.viewController stopMotionUpdates];" in app_delegate[will_resign_index:did_enter_background_index] and
+            "[self.viewController startMotionUpdates];" in app_delegate[did_become_active_index:will_terminate_index],
+            "application active-state callbacks must stop and restart controller-owned motion updates",
             failures)
     require("return isfinite(x) && isfinite(y) && isfinite(z);" in motion_validation,
             "shared motion validation must reject every non-finite component",
@@ -306,7 +355,7 @@ def main():
     win_completed_index = view_controller.find("self.gameCompleted = YES;", exit_collision_index)
     win_x_velocity_reset_index = view_controller.find("self.pacmanXVelocity = 0;", exit_collision_index)
     win_y_velocity_reset_index = view_controller.find("self.pacmanYVelocity = 0;", exit_collision_index)
-    win_motion_stop_index = view_controller.find("[self.motionManager stopAccelerometerUpdates];", exit_collision_index)
+    win_motion_stop_index = view_controller.find("[self stopMotionUpdates];", exit_collision_index)
     win_alert_index = view_controller.find('UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Congratulations"', exit_collision_index)
     require(exit_collision_index != -1 and win_completed_index != -1 and
             win_x_velocity_reset_index != -1 and win_y_velocity_reset_index != -1 and
@@ -406,6 +455,9 @@ def main():
     require("non-finite motion" in readme.lower(),
             "README must document invalid sensor sample rejection",
             failures)
+    require("active app lifecycle" in readme.lower() and "stale queued motion" in readme.lower(),
+            "README must document active-app ownership and stale queued motion rejection",
+            failures)
     require("scripts/check-baseline.py" in vision and "make lint" in vision and "make test" in vision and "make build" in vision and "asset" in vision.lower() and
             "time delta" in vision.lower() and "collision alert" in vision.lower() and "alert pause" in vision.lower(),
             "VISION must describe the current static Objective-C game baseline",
@@ -428,6 +480,9 @@ def main():
     require("non-finite motion" in vision.lower(),
             "VISION must describe invalid sensor sample rejection",
             failures)
+    require("active app lifecycle" in vision.lower() and "stale queued motion" in vision.lower(),
+            "VISION must describe active-app ownership and stale queued motion rejection",
+            failures)
     require("build.sh" in security and "make check" in security and "collision alert" in security.lower() and
             "alert pause" in security.lower() and "frame clock" in security.lower(),
             "SECURITY must document build script and static baseline guardrails",
@@ -446,6 +501,9 @@ def main():
             failures)
     require("non-finite motion" in security.lower(),
             "SECURITY must document invalid sensor sample guardrails",
+            failures)
+    require("active app lifecycle" in security.lower() and "stale queued motion" in security.lower(),
+            "SECURITY must document active-app ownership and stale queued motion guardrails",
             failures)
     require("/bin/sh" in changes and "without Xcode" in changes and "accelerometer" in changes and
             "weak" in changes.lower() and "time delta" in changes.lower() and
@@ -466,6 +524,9 @@ def main():
             failures)
     require("non-finite motion" in changes.lower(),
             "CHANGES must record invalid sensor sample rejection",
+            failures)
+    require("active app lifecycle" in changes.lower() and "stale queued motion" in changes.lower(),
+            "CHANGES must record active-app ownership and stale queued motion rejection",
             failures)
     require("GitHub Actions" in changes,
             "CHANGES must record hosted baseline coverage",
@@ -515,6 +576,13 @@ def main():
             "All four Make gates" in finite_motion_plan and
             "hostile mutations" in finite_motion_plan.lower(),
             "non-finite motion sample plan must record completed status and verification",
+            failures)
+    require("title: Active-App Motion Lifecycle" in active_motion_plan and
+            "type: fix" in active_motion_plan and
+            "date: 2026-06-17" in active_motion_plan and
+            "R1." in active_motion_plan and "R7." in active_motion_plan and
+            not re.search(r"(?mi)^status:\s*", active_motion_plan),
+            "active-app motion lifecycle plan must preserve modern metadata and requirements without legacy status fields",
             failures)
     location_make_statuses = re.findall(
         r"^status: .+$", location_independent_make_plan, flags=re.MULTILINE

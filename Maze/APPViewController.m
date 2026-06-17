@@ -8,6 +8,8 @@
 
 @interface APPViewController ()
 
+@property (assign, nonatomic) NSUInteger motionUpdateGeneration;
+
 @end
 
 @implementation APPViewController
@@ -59,6 +61,17 @@
     
     self.motionManager.accelerometerUpdateInterval = kUpdateInterval;
 
+}
+
+- (void)startMotionUpdates {
+    if (self.gameCompleted || [self.motionManager isAccelerometerActive]) {
+        return;
+    }
+
+    self.motionUpdateGeneration += 1;
+    NSUInteger motionGeneration = self.motionUpdateGeneration;
+    self.lastUpdateTime = [NSDate date];
+
     __weak APPViewController *weakSelf = self;
     [self.motionManager startAccelerometerUpdatesToQueue:self.queue withHandler:
      ^(CMAccelerometerData *accelerometerData, NSError *error) {
@@ -74,11 +87,19 @@
              if (strongSelf == nil) {
                  return;
              }
+             if (strongSelf.motionUpdateGeneration != motionGeneration
+                 || ![strongSelf.motionManager isAccelerometerActive]) {
+                 return;
+             }
              strongSelf.acceleration = acceleration;
              [strongSelf update];
          });
      }];
+}
 
+- (void)stopMotionUpdates {
+    self.motionUpdateGeneration += 1;
+    [self.motionManager stopAccelerometerUpdates];
 }
 
 - (void)movePacman {
@@ -133,7 +154,7 @@
         self.gameCompleted = YES;
         self.pacmanXVelocity = 0;
         self.pacmanYVelocity = 0;
-        [self.motionManager stopAccelerometerUpdates];
+        [self stopMotionUpdates];
         self.collisionAlertVisible = YES;
         
         UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Congratulations"
@@ -261,7 +282,7 @@
 
 - (void)dealloc
 {
-    [self.motionManager stopAccelerometerUpdates];
+    [self stopMotionUpdates];
 }
 
 @end

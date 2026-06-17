@@ -1,5 +1,10 @@
 # Changes
 
+## 2026-06-17
+
+- Tied accelerometer start and stop to the active app lifecycle and rejected
+  stale queued motion across pause/resume boundaries.
+
 ## 2026-06-16
 
 - Added executable C tests for finite accelerometer samples using the same
