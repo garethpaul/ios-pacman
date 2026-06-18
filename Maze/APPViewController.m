@@ -64,7 +64,9 @@
 }
 
 - (void)startMotionUpdates {
-    if (self.gameCompleted || [self.motionManager isAccelerometerActive]) {
+    if (self.gameCompleted
+        || ![self.motionManager isAccelerometerAvailable]
+        || [self.motionManager isAccelerometerActive]) {
         return;
     }
 

@@ -1,6 +1,6 @@
 # Accelerometer Availability Guard
 
-status: planned
+status: completed
 
 ## Context
 
@@ -84,8 +84,20 @@ lifecycle without changing gameplay, assets, dependencies, or project metadata.
 
 ## Work Completed
 
-Pending implementation.
+- Added an accelerometer capability predicate to the idempotent startup guard
+  before generation, clock, capture, or handler state.
+- Added portable ordering and guidance contracts without changing motion math,
+  lifecycle stop behavior, gameplay, or project metadata.
 
 ## Verification Completed
 
-Pending implementation and validation.
+- All four Make gates passed with the executable C motion-validation harness.
+- The absolute Makefile gate passed from an external directory.
+- `python3 -m py_compile scripts/check-baseline.py`, `sh -n build.sh`, and
+  `sh -n scripts/run-motion-validation-tests.sh` passed.
+- Six isolated hostile mutations were rejected for presence, polarity,
+  capability identity, ordering, guidance, and plan evidence.
+- `git diff --check` passed with generated-artifact, protected-metadata, and
+  changed-line credential audits.
+- Local `xcodebuild was unavailable`; hosted macOS remains authoritative for
+  Objective-C and Core Motion compilation.

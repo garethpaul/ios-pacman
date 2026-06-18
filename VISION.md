@@ -19,6 +19,7 @@ Priority:
 - Keep the screenshot and README aligned with app behavior
 - Maintain the build script and Xcode project structure
 - Keep accelerometer updates bounded to the active app lifecycle
+- Keep the accelerometer availability guard ahead of motion startup state
 - Reject stale queued motion across pause/resume boundaries
 - Assign and integrate each accelerometer sample together on the main thread
 - Reject non-finite motion samples before they enter gameplay state

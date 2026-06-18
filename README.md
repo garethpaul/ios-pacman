@@ -53,7 +53,7 @@ The checked-in project has no external dependency manifest. Use Xcode for full b
 
 - Open `Maze.xcodeproj` in Xcode, choose the app or sample scheme, and run it on the matching simulator/device.
 - Run `./build.sh` when the required platform toolchain is installed. On hosts without Xcode, the script exits cleanly after reporting that the Xcode build was skipped.
-- This is a local game sample with XIB-wired image assets and CoreMotion movement. Non-finite motion samples are rejected before each valid accelerometer sample is assigned and integrated together on the main thread. Gameplay updates clamp the frame time delta before applying accelerometer velocity, resolve boundary and wall constraints before evaluating the corrected collision frame, stop outcome checks after a win, gate collision alerts while visible, and reset the frame clock after alerts. Do not add accounts, analytics, persistence, upload, or network behavior without a dedicated design and security review.
+- This is a local game sample with XIB-wired image assets and CoreMotion movement. The accelerometer availability guard rejects unsupported hardware before motion startup state changes. Non-finite motion samples are rejected before each valid accelerometer sample is assigned and integrated together on the main thread. Gameplay updates clamp the frame time delta before applying accelerometer velocity, resolve boundary and wall constraints before evaluating the corrected collision frame, stop outcome checks after a win, gate collision alerts while visible, and reset the frame clock after alerts. Do not add accounts, analytics, persistence, upload, or network behavior without a dedicated design and security review.
 
 ## Testing and Verification
 

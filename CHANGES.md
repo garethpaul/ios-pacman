@@ -1,5 +1,10 @@
 # Changes
 
+## 2026-06-18
+
+- Added an accelerometer availability guard before motion generation, clock,
+  capture, or handler startup state changes.
+
 ## 2026-06-17
 
 - Tied accelerometer start and stop to the active app lifecycle and rejected

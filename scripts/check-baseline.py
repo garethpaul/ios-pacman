@@ -27,6 +27,7 @@ FINITE_MOTION_PLAN = ROOT / "docs/plans/2026-06-13-nonfinite-motion-sample-guard
 LOCATION_INDEPENDENT_MAKE_PLAN = ROOT / "docs/plans/2026-06-13-location-independent-make.md"
 MOTION_TEST_PLAN = ROOT / "docs/plans/2026-06-16-executable-motion-validation-tests.md"
 ACTIVE_MOTION_PLAN = ROOT / "docs/plans/2026-06-17-018-fix-active-motion-lifecycle-plan.md"
+ACCELEROMETER_AVAILABILITY_PLAN = ROOT / "docs/plans/2026-06-18-accelerometer-availability-guard.md"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -175,6 +176,7 @@ def main():
     vision = read("VISION.md")
     security = read("SECURITY.md")
     changes = read("CHANGES.md")
+    agent_guidance = read("AGENTS.md")
     ci_workflow = read(".github/workflows/check.yml")
     gitignore = read(".gitignore")
     makefile = read("Makefile")
@@ -196,6 +198,7 @@ def main():
     location_independent_make_plan = LOCATION_INDEPENDENT_MAKE_PLAN.read_text(encoding="utf-8") if LOCATION_INDEPENDENT_MAKE_PLAN.exists() else ""
     motion_test_plan = MOTION_TEST_PLAN.read_text(encoding="utf-8") if MOTION_TEST_PLAN.exists() else ""
     active_motion_plan = ACTIVE_MOTION_PLAN.read_text(encoding="utf-8") if ACTIVE_MOTION_PLAN.exists() else ""
+    accelerometer_availability_plan = ACCELEROMETER_AVAILABILITY_PLAN.read_text(encoding="utf-8") if ACCELEROMETER_AVAILABILITY_PLAN.exists() else ""
 
     shell_result = subprocess.run(["sh", "-n", "build.sh"], cwd=str(ROOT), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     require(shell_result.returncode == 0,
@@ -251,7 +254,11 @@ def main():
     stop_method_index = view_controller.find("- (void)stopMotionUpdates")
     callback_index = view_controller.find("startAccelerometerUpdatesToQueue:self.queue withHandler:")
     duplicate_start_guard_index = view_controller.find(
-        "if (self.gameCompleted || [self.motionManager isAccelerometerActive]) {",
+        "if (self.gameCompleted\n        || ![self.motionManager isAccelerometerAvailable]\n        || [self.motionManager isAccelerometerActive]) {",
+        start_method_index,
+    )
+    availability_guard_index = view_controller.find(
+        "![self.motionManager isAccelerometerAvailable]",
         start_method_index,
     )
     generation_increment_index = view_controller.find(
@@ -281,9 +288,10 @@ def main():
             "@property (assign, nonatomic) NSUInteger motionUpdateGeneration;" in view_controller and
             "startAccelerometerUpdatesToQueue" not in view_did_load and
             start_method_index != -1 and stop_method_index != -1 and
-            duplicate_start_guard_index != -1 and generation_increment_index != -1 and
+            duplicate_start_guard_index != -1 and availability_guard_index != -1 and
+            generation_increment_index != -1 and
             generation_capture_index != -1 and resume_clock_index != -1 and callback_index != -1 and
-            start_method_index < duplicate_start_guard_index < generation_increment_index < generation_capture_index < resume_clock_index < callback_index and
+            start_method_index < duplicate_start_guard_index <= availability_guard_index < generation_increment_index < generation_capture_index < resume_clock_index < callback_index and
             "self.motionUpdateGeneration += 1;" in stop_method and
             "[self.motionManager stopAccelerometerUpdates];" in stop_method,
             "motion ownership must use idempotent controller start/stop methods with generation invalidation and a fresh resume clock",
@@ -583,6 +591,37 @@ def main():
             "R1." in active_motion_plan and "R7." in active_motion_plan and
             not re.search(r"(?mi)^status:\s*", active_motion_plan),
             "active-app motion lifecycle plan must preserve modern metadata and requirements without legacy status fields",
+            failures)
+    accelerometer_availability_statuses = re.findall(
+        r"(?mi)^status:\s*(.+?)\s*$", accelerometer_availability_plan
+    )
+    accelerometer_availability_verification = markdown_section(
+        accelerometer_availability_plan, "Verification Completed"
+    )
+    accelerometer_availability_required = (
+        "All four Make gates",
+        "absolute Makefile",
+        "python3 -m py_compile scripts/check-baseline.py",
+        "sh -n build.sh",
+        "sh -n scripts/run-motion-validation-tests.sh",
+        "Six isolated hostile mutations",
+        "git diff --check",
+        "xcodebuild was unavailable",
+    )
+    require(accelerometer_availability_statuses == ["completed"] and
+            all(item in accelerometer_availability_verification
+                for item in accelerometer_availability_required) and
+            not re.search(r"(?i)\b(?:pending|todo|tbd|not run)\b",
+                          accelerometer_availability_verification),
+            "accelerometer availability plan must record completed verification",
+            failures)
+    normalized_guidance = [
+        " ".join(document.lower().split())
+        for document in [readme, security, vision, changes, agent_guidance]
+    ]
+    require(all("accelerometer availability guard" in document
+                for document in normalized_guidance),
+            "project guidance must document the accelerometer availability guard",
             failures)
     location_make_statuses = re.findall(
         r"^status: .+$", location_independent_make_plan, flags=re.MULTILINE
