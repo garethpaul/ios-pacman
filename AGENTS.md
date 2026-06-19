@@ -43,10 +43,10 @@
 
 - No required secret or credential file was identified in the repository scan. If you add integrations later, keep secrets out of git.
 - Resource changes should keep image files, XIB outlets, screenshot, and Xcode project references aligned.
-- Accelerometer callbacks should not strongly retain the controller; each sample should be assigned and integrated together on the main thread, and motion updates should remain bounded to the live game screen.
+- Accelerometer callbacks should not strongly retain the controller; each non-finite or overflow-prone sample should be rejected before valid samples are assigned and integrated together on the main thread, and motion updates should remain bounded to the live game screen.
 - Keep the accelerometer availability guard ahead of motion generation, frame
   clock, capture, and handler startup side effects.
-- `build.sh` should stay valid for `/bin/sh` because CI and local shells may not invoke bash.
+- `build.sh` should stay valid for `/bin/sh` because CI and local shells may not invoke bash, and Xcode DerivedData should stay temp-scoped unless explicitly overridden.
 - This looks like an Apple platform project or sample. Xcode, Swift, CocoaPods, and deployment target versions may need to match the original project era.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 

@@ -206,13 +206,17 @@ def main():
             failures)
     require("function ci_build" not in build_script,
             "build.sh must remain POSIX-compatible", failures)
+    require(build_script.startswith("#!/bin/sh\n"),
+            "build.sh must start with a POSIX shebang",
+            failures)
     require("command -v xcodebuild" in build_script and "xcodebuild unavailable" in build_script,
             "build.sh must skip cleanly on hosts without Xcode",
             failures)
     require('xcodebuild -project "Maze.xcodeproj"' in build_script and '-scheme "Maze"' in build_script and
             '-destination "generic/platform=iOS Simulator"' in build_script and '-configuration "Debug"' in build_script and
-            "CODE_SIGNING_ALLOWED=NO" in build_script,
-            "build.sh must compile the unsigned Maze Debug target for a generic simulator",
+            "CODE_SIGNING_ALLOWED=NO" in build_script and '-derivedDataPath "$DERIVED_DATA_DIR"' in build_script and
+            'mktemp -d "${TMPDIR:-/tmp}/ios-pacman-derived-data.XXXXXX"' in build_script,
+            "build.sh must compile the unsigned Maze Debug target for a generic simulator with temp-scoped DerivedData",
             failures)
 
     require(app_plist.get("CFBundleIdentifier") == "$(PRODUCT_BUNDLE_IDENTIFIER)",
@@ -272,7 +276,7 @@ def main():
         "self.lastUpdateTime = [NSDate date];", generation_capture_index
     )
     sample_capture_index = view_controller.find("CMAcceleration acceleration = accelerometerData.acceleration;", callback_index)
-    finite_guard = "if (!APPMotionComponentsAreFinite(acceleration.x, acceleration.y, acceleration.z)) {\n             return;\n         }"
+    finite_guard = "if (!APPMotionComponentsAreSafeForIntegration(acceleration.x, acceleration.y, acceleration.z)) {\n             return;\n         }"
     finite_guard_index = view_controller.find(finite_guard, sample_capture_index)
     main_dispatch_index = view_controller.find("dispatch_async(dispatch_get_main_queue(), ^{", sample_capture_index)
     strong_capture_index = view_controller.find("APPViewController *strongSelf = weakSelf;", main_dispatch_index)
@@ -313,17 +317,22 @@ def main():
     require(will_resign_index != -1 and did_enter_background_index != -1 and
             did_become_active_index != -1 and will_terminate_index != -1 and
             "[self.viewController stopMotionUpdates];" in app_delegate[will_resign_index:did_enter_background_index] and
-            "[self.viewController startMotionUpdates];" in app_delegate[did_become_active_index:will_terminate_index],
-            "application active-state callbacks must stop and restart controller-owned motion updates",
+            "[self.viewController stopMotionUpdates];" in app_delegate[did_enter_background_index:did_become_active_index] and
+            "[self.viewController startMotionUpdates];" in app_delegate[did_become_active_index:will_terminate_index] and
+            "[self.viewController stopMotionUpdates];" in app_delegate[will_terminate_index:],
+            "application lifecycle callbacks must stop motion on resign-active, background, and termination, then restart only after becoming active",
             failures)
-    require("return isfinite(x) && isfinite(y) && isfinite(z);" in motion_validation,
-            "shared motion validation must reject every non-finite component",
+    require("APPMotionMaximumAccelerationComponent 16.0" in read("Maze/APPMotionValidation.h") and
+            "APPMotionComponentsAreSafeForIntegration" in motion_validation and
+            "isfinite(value)" in motion_validation and
+            "fabs(value) <= APPMotionMaximumAccelerationComponent" in motion_validation,
+            "shared motion validation must reject non-finite and overflow-prone acceleration components",
             failures)
     for fragment in [
-        "APPMotionComponentsAreFinite(0.0, 0.0, 0.0)",
-        "APPMotionComponentsAreFinite(DBL_MAX, -DBL_MAX, DBL_MIN)",
-        "APPMotionComponentsAreFinite(NAN, 0.0, 0.0)",
-        "APPMotionComponentsAreFinite(0.0, -INFINITY, 0.0)",
+        "APPMotionComponentsAreSafeForIntegration(0.0, 0.0, 0.0)",
+        "APPMotionComponentsAreSafeForIntegration(APPMotionMaximumAccelerationComponent",
+        "APPMotionComponentsAreSafeForIntegration(DBL_MAX, 0.0, 0.0)",
+        "APPMotionComponentsAreSafeForIntegration(0.0, -INFINITY, 0.0)",
     ]:
         require(fragment in motion_tests,
                 f"executable motion validation coverage is missing: {fragment}",
@@ -460,8 +469,8 @@ def main():
     require("previous position" in readme.lower(),
             "README must document previous-position initialization behavior",
             failures)
-    require("non-finite motion" in readme.lower(),
-            "README must document invalid sensor sample rejection",
+    require("non-finite" in readme.lower() and "overflow-prone" in readme.lower() and "motion" in readme.lower(),
+            "README must document invalid and overflow-prone sensor sample rejection",
             failures)
     require("active app lifecycle" in readme.lower() and "stale queued motion" in readme.lower(),
             "README must document active-app ownership and stale queued motion rejection",
@@ -485,8 +494,8 @@ def main():
     require("previous position" in vision.lower(),
             "VISION must describe previous-position initialization behavior",
             failures)
-    require("non-finite motion" in vision.lower(),
-            "VISION must describe invalid sensor sample rejection",
+    require("non-finite" in vision.lower() and "overflow-prone" in vision.lower() and "motion" in vision.lower(),
+            "VISION must describe invalid and overflow-prone sensor sample rejection",
             failures)
     require("active app lifecycle" in vision.lower() and "stale queued motion" in vision.lower(),
             "VISION must describe active-app ownership and stale queued motion rejection",
@@ -507,8 +516,8 @@ def main():
     require("previous position" in security.lower(),
             "SECURITY must document previous-position initialization guardrails",
             failures)
-    require("non-finite motion" in security.lower(),
-            "SECURITY must document invalid sensor sample guardrails",
+    require("non-finite" in security.lower() and "overflow-prone" in security.lower() and "motion" in security.lower(),
+            "SECURITY must document invalid and overflow-prone sensor sample guardrails",
             failures)
     require("active app lifecycle" in security.lower() and "stale queued motion" in security.lower(),
             "SECURITY must document active-app ownership and stale queued motion guardrails",
@@ -530,8 +539,8 @@ def main():
     require("previous position" in changes.lower(),
             "CHANGES must record previous-position initialization behavior",
             failures)
-    require("non-finite motion" in changes.lower(),
-            "CHANGES must record invalid sensor sample rejection",
+    require("non-finite" in changes.lower() and "overflow-prone" in changes.lower() and "motion" in changes.lower(),
+            "CHANGES must record invalid and overflow-prone sensor sample rejection",
             failures)
     require("active app lifecycle" in changes.lower() and "stale queued motion" in changes.lower(),
             "CHANGES must record active-app ownership and stale queued motion rejection",

@@ -52,8 +52,8 @@ The checked-in project has no external dependency manifest. Use Xcode for full b
 ## Running or Using the Project
 
 - Open `Maze.xcodeproj` in Xcode, choose the app or sample scheme, and run it on the matching simulator/device.
-- Run `./build.sh` when the required platform toolchain is installed. On hosts without Xcode, the script exits cleanly after reporting that the Xcode build was skipped.
-- This is a local game sample with XIB-wired image assets and CoreMotion movement. The accelerometer availability guard rejects unsupported hardware before motion startup state changes. Non-finite motion samples are rejected before each valid accelerometer sample is assigned and integrated together on the main thread. Gameplay updates clamp the frame time delta before applying accelerometer velocity, resolve boundary and wall constraints before evaluating the corrected collision frame, stop outcome checks after a win, gate collision alerts while visible, and reset the frame clock after alerts. Do not add accounts, analytics, persistence, upload, or network behavior without a dedicated design and security review.
+- Run `./build.sh` when the required platform toolchain is installed. On hosts without Xcode, the script exits cleanly after reporting that the Xcode build was skipped. Xcode DerivedData stays in a temp directory unless `DERIVED_DATA_DIR` is set.
+- This is a local game sample with XIB-wired image assets and CoreMotion movement. The accelerometer availability guard rejects unsupported hardware before motion startup state changes. Non-finite or overflow-prone motion samples are rejected before each valid accelerometer sample is assigned and integrated together on the main thread. Gameplay updates clamp the frame time delta before applying accelerometer velocity, resolve boundary and wall constraints before evaluating the corrected collision frame, stop outcome checks after a win, gate collision alerts while visible, and reset the frame clock after alerts. Do not add accounts, analytics, persistence, upload, or network behavior without a dedicated design and security review.
 
 ## Testing and Verification
 
@@ -88,7 +88,7 @@ rendering, or gameplay.
 GitHub Actions runs the same `make check` static baseline with Python 3.12 for
 pushes and pull requests.
 
-For full legacy verification on macOS, run `./build.sh` or use Xcode's build/test action with the appropriate scheme and destination.
+For full legacy verification on macOS, run `./build.sh` or use Xcode's build/test action with the appropriate scheme and destination. `build.sh` directs DerivedData to a temp directory by default.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -102,8 +102,9 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Review changes touching file, media, JSON, XML, CSV, OCR, or data parsing; examples from the scan include Maze/APPViewController.m, Maze/Maze-Info.plist.
 - Resource changes should keep image files, XIB outlets, screenshot, and Xcode project references aligned.
 - Accelerometer callbacks should not strongly retain the controller. Non-finite
-  motion samples should be rejected, updates should follow the active app lifecycle,
-  and stale queued motion should not cross pause/resume boundaries.
+  or overflow-prone motion samples should be rejected, updates should follow the
+  active app lifecycle, and stale queued motion should not cross pause/resume
+  boundaries.
 - `build.sh` should stay valid for `/bin/sh` because CI and local shells may not invoke bash.
 
 ## Maintenance Notes

@@ -21,15 +21,22 @@ static void expect_false(bool value, const char *message) {
 }
 
 int main(void) {
-    expect_true(APPMotionComponentsAreFinite(0.0, 0.0, 0.0), "zero sample is finite");
-    expect_true(APPMotionComponentsAreFinite(0.25, -0.5, 1.0), "normal sample is finite");
-    expect_true(APPMotionComponentsAreFinite(DBL_MAX, -DBL_MAX, DBL_MIN), "finite boundaries are accepted");
+    expect_true(APPMotionComponentsAreSafeForIntegration(0.0, 0.0, 0.0), "zero sample is usable");
+    expect_true(APPMotionComponentsAreSafeForIntegration(0.25, -0.5, 1.0), "normal sample is usable");
+    expect_true(APPMotionComponentsAreSafeForIntegration(APPMotionMaximumAccelerationComponent,
+                                                        -APPMotionMaximumAccelerationComponent,
+                                                        DBL_MIN),
+                "bounded finite sample is usable");
 
-    expect_false(APPMotionComponentsAreFinite(NAN, 0.0, 0.0), "NaN x is rejected");
-    expect_false(APPMotionComponentsAreFinite(0.0, NAN, 0.0), "NaN y is rejected");
-    expect_false(APPMotionComponentsAreFinite(0.0, 0.0, NAN), "NaN z is rejected");
-    expect_false(APPMotionComponentsAreFinite(INFINITY, 0.0, 0.0), "positive infinity is rejected");
-    expect_false(APPMotionComponentsAreFinite(0.0, -INFINITY, 0.0), "negative infinity is rejected");
+    expect_false(APPMotionComponentsAreSafeForIntegration(NAN, 0.0, 0.0), "NaN x is rejected");
+    expect_false(APPMotionComponentsAreSafeForIntegration(0.0, NAN, 0.0), "NaN y is rejected");
+    expect_false(APPMotionComponentsAreSafeForIntegration(0.0, 0.0, NAN), "NaN z is rejected");
+    expect_false(APPMotionComponentsAreSafeForIntegration(INFINITY, 0.0, 0.0), "positive infinity is rejected");
+    expect_false(APPMotionComponentsAreSafeForIntegration(0.0, -INFINITY, 0.0), "negative infinity is rejected");
+    expect_false(APPMotionComponentsAreSafeForIntegration(DBL_MAX, 0.0, 0.0), "overflow-prone x is rejected");
+    expect_false(APPMotionComponentsAreSafeForIntegration(0.0, -DBL_MAX, 0.0), "overflow-prone y is rejected");
+    expect_false(APPMotionComponentsAreSafeForIntegration(0.0, 0.0, APPMotionMaximumAccelerationComponent + 1.0),
+                 "out-of-range z is rejected");
 
     if (failure_count != 0) {
         return 1;

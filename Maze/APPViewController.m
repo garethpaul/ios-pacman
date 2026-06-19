@@ -81,7 +81,7 @@
              return;
          }
          CMAcceleration acceleration = accelerometerData.acceleration;
-         if (!APPMotionComponentsAreFinite(acceleration.x, acceleration.y, acceleration.z)) {
+         if (!APPMotionComponentsAreSafeForIntegration(acceleration.x, acceleration.y, acceleration.z)) {
              return;
          }
          dispatch_async(dispatch_get_main_queue(), ^{

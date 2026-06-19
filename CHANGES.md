@@ -2,6 +2,9 @@
 
 ## 2026-06-18
 
+- Kept Xcode build artifacts temp-scoped through `build.sh`, stopped motion on
+  background and termination lifecycle callbacks, and rejected overflow-prone
+  finite accelerometer samples before gameplay integration.
 - Added an accelerometer availability guard before motion generation, clock,
   capture, or handler startup state changes.
 

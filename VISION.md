@@ -22,7 +22,7 @@ Priority:
 - Keep the accelerometer availability guard ahead of motion startup state
 - Reject stale queued motion across pause/resume boundaries
 - Assign and integrate each accelerometer sample together on the main thread
-- Reject non-finite motion samples before they enter gameplay state
+- Reject non-finite or overflow-prone motion samples before they enter gameplay state
 - Gate collision alerts so repeated frames do not stack modal alerts
 - Reset movement velocity after failure collisions send the player to start
 - Keep previous position initialized for wall-collision rollback
@@ -65,13 +65,15 @@ Current baseline: `make lint`, `make test`, `make build`, and `make check` run
 `scripts/check-baseline.py` without Xcode, while hosted macOS CI also compiles
 the unsigned app for a generic iOS simulator. The baseline verifies `build.sh`,
 plist/XIB/scheme XML, image resources, Xcode project references, accelerometer
-lifecycle and main-thread handoff guardrails, frame time delta clamping, collision alert gating, failure
+lifecycle and main-thread handoff guardrails, non-finite or overflow-prone motion
+sample rejection, frame time delta clamping, collision alert gating, failure
 velocity reset behavior, previous position initialization, win completion update
 guarding, and alert pause behavior, with local-only gameplay and alert frame
 clock reset behavior, with no debug logging, network, analytics, upload, or
 persistence behavior.
 It also verifies that motion callbacks avoid strongly retaining the controller,
-follow the active app lifecycle, and reject stale queued motion after a pause.
+follow the active app lifecycle, reject stale queued motion after a pause, and
+keep Xcode DerivedData in temp-scoped build output by default.
 GitHub Actions runs that static baseline with Python 3.12.
 
 ## What We Will Not Merge (For Now)
