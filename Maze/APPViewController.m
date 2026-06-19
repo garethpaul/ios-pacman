@@ -3,8 +3,12 @@
 //
 
 #import "APPViewController.h"
+#import "APPMotionValidation.h"
+#import <math.h>
 
 @interface APPViewController ()
+
+@property (assign, nonatomic) NSUInteger motionUpdateGeneration;
 
 @end
 
@@ -57,6 +61,19 @@
     
     self.motionManager.accelerometerUpdateInterval = kUpdateInterval;
 
+}
+
+- (void)startMotionUpdates {
+    if (self.gameCompleted
+        || ![self.motionManager isAccelerometerAvailable]
+        || [self.motionManager isAccelerometerActive]) {
+        return;
+    }
+
+    self.motionUpdateGeneration += 1;
+    NSUInteger motionGeneration = self.motionUpdateGeneration;
+    self.lastUpdateTime = [NSDate date];
+
     __weak APPViewController *weakSelf = self;
     [self.motionManager startAccelerometerUpdatesToQueue:self.queue withHandler:
      ^(CMAccelerometerData *accelerometerData, NSError *error) {
@@ -64,16 +81,27 @@
              return;
          }
          CMAcceleration acceleration = accelerometerData.acceleration;
+         if (!APPMotionComponentsAreSafeForIntegration(acceleration.x, acceleration.y, acceleration.z)) {
+             return;
+         }
          dispatch_async(dispatch_get_main_queue(), ^{
              APPViewController *strongSelf = weakSelf;
              if (strongSelf == nil) {
+                 return;
+             }
+             if (strongSelf.motionUpdateGeneration != motionGeneration
+                 || ![strongSelf.motionManager isAccelerometerActive]) {
                  return;
              }
              strongSelf.acceleration = acceleration;
              [strongSelf update];
          });
      }];
+}
 
+- (void)stopMotionUpdates {
+    self.motionUpdateGeneration += 1;
+    [self.motionManager stopAccelerometerUpdates];
 }
 
 - (void)movePacman {
@@ -128,7 +156,7 @@
         self.gameCompleted = YES;
         self.pacmanXVelocity = 0;
         self.pacmanYVelocity = 0;
-        [self.motionManager stopAccelerometerUpdates];
+        [self stopMotionUpdates];
         self.collisionAlertVisible = YES;
         
         UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Congratulations"
@@ -256,7 +284,7 @@
 
 - (void)dealloc
 {
-    [self.motionManager stopAccelerometerUpdates];
+    [self stopMotionUpdates];
 }
 
 @end

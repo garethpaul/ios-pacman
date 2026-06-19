@@ -7,7 +7,7 @@
 
 `garethpaul/ios-pacman` is an Apple platform application or Swift sample. Pacman iOS Game
 
-This README is based on the checked-in source, manifests, scripts, and repository metadata on the `master` branch. The project language mix found during review was: Objective-C (3), C/C++ headers (2), shell (1).
+This README is based on the checked-in source, manifests, scripts, and repository metadata on the `master` branch. The project language mix found during review was: Objective-C (3), C (2), C/C++ headers (3), shell (2).
 
 ## Repository Contents
 
@@ -52,8 +52,8 @@ The checked-in project has no external dependency manifest. Use Xcode for full b
 ## Running or Using the Project
 
 - Open `Maze.xcodeproj` in Xcode, choose the app or sample scheme, and run it on the matching simulator/device.
-- Run `./build.sh` when the required platform toolchain is installed. On hosts without Xcode, the script exits cleanly after reporting that the Xcode build was skipped.
-- This is a local game sample with XIB-wired image assets and CoreMotion movement. Each accelerometer sample is assigned and integrated together on the main thread. Gameplay updates clamp the frame time delta before applying accelerometer velocity, resolve boundary and wall constraints before evaluating the corrected collision frame, stop outcome checks after a win, gate collision alerts while visible, and reset the frame clock after alerts. Do not add accounts, analytics, persistence, upload, or network behavior without a dedicated design and security review.
+- Run `./build.sh` when the required platform toolchain is installed. On hosts without Xcode, the script exits cleanly after reporting that the Xcode build was skipped. Xcode DerivedData stays in a temp directory unless `DERIVED_DATA_DIR` is set.
+- This is a local game sample with XIB-wired image assets and CoreMotion movement. The accelerometer availability guard rejects unsupported hardware before motion startup state changes. Non-finite or overflow-prone motion samples are rejected before each valid accelerometer sample is assigned and integrated together on the main thread. Gameplay updates clamp the frame time delta before applying accelerometer velocity, resolve boundary and wall constraints before evaluating the corrected collision frame, stop outcome checks after a win, gate collision alerts while visible, and reset the frame clock after alerts. Do not add accounts, analytics, persistence, upload, or network behavior without a dedicated design and security review.
 
 ## Testing and Verification
 
@@ -70,7 +70,16 @@ The `lint`, `test`, and `build` targets intentionally alias the static baseline
 on hosts without the legacy Xcode toolchain, so the standard local gate commands
 stay available while preserving the single source of truth.
 
-The baseline runs `scripts/check-baseline.py`, validates POSIX shell syntax for `build.sh`, parses plist/XIB/scheme XML, checks PNG resources, verifies Xcode project references, checks corrected collision ordering and candidate-frame use, accelerometer lifecycle and main-thread handoff, collision alert gating, failure velocity reset behavior, previous position initialization, win completion update guards, alert pause behavior, alert frame clock reset behavior, frame time delta clamping, and weak callback capture guardrails, and guards against debug logging, network, analytics, upload, or persistence behavior.
+The baseline first compiles and runs executable C tests against the same finite
+motion-sample predicate used by the CoreMotion callback. It then runs
+`scripts/check-baseline.py`, validates POSIX shell syntax for `build.sh`, parses
+plist/XIB/scheme XML, checks PNG resources, verifies Xcode project references,
+checks corrected collision ordering and candidate-frame use, accelerometer
+lifecycle and main-thread handoff, collision alert gating, failure velocity
+reset behavior, previous position initialization, win completion update guards,
+alert pause behavior, alert frame clock reset behavior, frame time delta
+clamping, and weak callback capture guardrails, and guards against debug
+logging, network, analytics, upload, or persistence behavior.
 
 Pinned `macos-15` CI runs `make check` and compiles the unsigned app for a
 generic iOS simulator. It does not exercise accelerometer input, alerts,
@@ -79,7 +88,7 @@ rendering, or gameplay.
 GitHub Actions runs the same `make check` static baseline with Python 3.12 for
 pushes and pull requests.
 
-For full legacy verification on macOS, run `./build.sh` or use Xcode's build/test action with the appropriate scheme and destination.
+For full legacy verification on macOS, run `./build.sh` or use Xcode's build/test action with the appropriate scheme and destination. `build.sh` directs DerivedData to a temp directory by default.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -92,7 +101,10 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Review changes touching network requests, sockets, or service endpoints; examples from the scan include Maze/Maze-Info.plist.
 - Review changes touching file, media, JSON, XML, CSV, OCR, or data parsing; examples from the scan include Maze/APPViewController.m, Maze/Maze-Info.plist.
 - Resource changes should keep image files, XIB outlets, screenshot, and Xcode project references aligned.
-- Accelerometer callbacks should not strongly retain the controller; motion updates should remain bounded to the live game screen.
+- Accelerometer callbacks should not strongly retain the controller. Non-finite
+  or overflow-prone motion samples should be rejected, updates should follow the
+  active app lifecycle, and stale queued motion should not cross pause/resume
+  boundaries.
 - `build.sh` should stay valid for `/bin/sh` because CI and local shells may not invoke bash.
 
 ## Maintenance Notes
@@ -105,10 +117,18 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - See `docs/plans/2026-06-09-failure-velocity-reset.md` for the failure velocity reset guardrail.
 - See `docs/plans/2026-06-09-win-completion-update-guard.md` for the win completion update guardrail.
 - See `docs/plans/2026-06-10-previous-point-initialization.md` for the previous position initialization guardrail.
+- See `docs/plans/2026-06-13-nonfinite-motion-sample-guard.md` for the sensor
+  value guardrail.
+- See `docs/plans/2026-06-16-executable-motion-validation-tests.md` for the
+  shared finite-sample predicate and executable C behavioral gate.
+- See `docs/plans/2026-06-17-018-fix-active-motion-lifecycle-plan.md` for active
+  app lifecycle ownership and stale queued motion rejection.
 - See `docs/plans/2026-06-10-ci-baseline.md` for the GitHub Actions static
   baseline.
 - See `docs/plans/2026-06-09-make-gate-aliases.md` for the local gate alias guardrail.
 - Run `make lint`, `make test`, `make build`, and `make check` before pushing changes to Objective-C sources, plist/XIB files, image assets, Xcode metadata, `build.sh`, or gameplay/security documentation.
+- The same gates may be invoked through an absolute Makefile path from another
+  directory; verification resolves both commands relative to the checkout.
 
 ## Contributing
 

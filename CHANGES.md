@@ -1,5 +1,30 @@
 # Changes
 
+## 2026-06-18
+
+- Kept Xcode build artifacts temp-scoped through `build.sh`, stopped motion on
+  background and termination lifecycle callbacks, and rejected overflow-prone
+  finite accelerometer samples before gameplay integration.
+- Added an accelerometer availability guard before motion generation, clock,
+  capture, or handler startup state changes.
+
+## 2026-06-17
+
+- Tied accelerometer start and stop to the active app lifecycle and rejected
+  stale queued motion across pause/resume boundaries.
+
+## 2026-06-16
+
+- Added executable C tests for finite accelerometer samples using the same
+  predicate as the CoreMotion callback.
+
+## 2026-06-13
+
+- Made all Make verification aliases location-independent when invoked through
+  an absolute Makefile path.
+- Rejected non-finite motion samples before main-thread gameplay assignment and
+  update.
+
 ## 2026-06-12
 
 - Assigned each Core Motion sample and advanced gameplay together on the main

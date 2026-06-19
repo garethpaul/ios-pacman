@@ -30,4 +30,7 @@
 @property (assign, nonatomic) BOOL collisionAlertVisible;
 @property (assign, nonatomic) BOOL gameCompleted;
 
+- (void)startMotionUpdates;
+- (void)stopMotionUpdates;
+
 @end

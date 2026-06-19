@@ -23,6 +23,11 @@ CI_PLAN = ROOT / "docs/plans/2026-06-10-ci-baseline.md"
 HOSTED_VALIDATION_PLAN = ROOT / "docs/plans/2026-06-10-hosted-project-validation.md"
 CORRECTED_COLLISION_PLAN = ROOT / "docs/plans/2026-06-10-corrected-collision-build.md"
 MAIN_THREAD_MOTION_PLAN = ROOT / "docs/plans/2026-06-12-main-thread-motion-handoff.md"
+FINITE_MOTION_PLAN = ROOT / "docs/plans/2026-06-13-nonfinite-motion-sample-guard.md"
+LOCATION_INDEPENDENT_MAKE_PLAN = ROOT / "docs/plans/2026-06-13-location-independent-make.md"
+MOTION_TEST_PLAN = ROOT / "docs/plans/2026-06-16-executable-motion-validation-tests.md"
+ACTIVE_MOTION_PLAN = ROOT / "docs/plans/2026-06-17-018-fix-active-motion-lifecycle-plan.md"
+ACCELEROMETER_AVAILABILITY_PLAN = ROOT / "docs/plans/2026-06-18-accelerometer-availability-guard.md"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -33,6 +38,14 @@ def require(condition, message, failures):
 
 def read(relative_path):
     return (ROOT / relative_path).read_text(encoding="utf-8", errors="replace")
+
+
+def markdown_section(text, heading):
+    match = re.search(
+        rf"(?ms)^## {re.escape(heading)}\s*$\n(.*?)(?=^## |\Z)",
+        text,
+    )
+    return match.group(1).strip() if match else ""
 
 
 def strip_c_line_comments(text):
@@ -86,6 +99,8 @@ def main():
         "Maze/APPAppDelegate.m",
         "Maze/APPViewController.h",
         "Maze/APPViewController.m",
+        "Maze/APPMotionValidation.c",
+        "Maze/APPMotionValidation.h",
         "Maze/main.m",
         "Maze/en.lproj/APPViewController.xib",
         "Maze/en.lproj/InfoPlist.strings",
@@ -112,7 +127,13 @@ def main():
         "docs/plans/2026-06-10-hosted-project-validation.md",
         "docs/plans/2026-06-10-corrected-collision-build.md",
         "docs/plans/2026-06-12-main-thread-motion-handoff.md",
+        "docs/plans/2026-06-13-nonfinite-motion-sample-guard.md",
+        "docs/plans/2026-06-13-location-independent-make.md",
+        "docs/plans/2026-06-16-executable-motion-validation-tests.md",
+        "docs/plans/2026-06-17-018-fix-active-motion-lifecycle-plan.md",
         "docs/readme-overview.svg",
+        "Tests/APPMotionValidationTests.c",
+        "scripts/run-motion-validation-tests.sh",
     ]
 
     for relative_path in required_files:
@@ -143,14 +164,19 @@ def main():
     project = read("Maze.xcodeproj/project.pbxproj")
     xib = read("Maze/en.lproj/APPViewController.xib")
     build_script = read("build.sh")
+    app_delegate = read("Maze/APPAppDelegate.m")
     view_header = read("Maze/APPViewController.h")
     view_controller = read("Maze/APPViewController.m")
+    motion_validation = read("Maze/APPMotionValidation.c")
+    motion_tests = read("Tests/APPMotionValidationTests.c")
+    motion_test_runner = read("scripts/run-motion-validation-tests.sh")
     source = "\n".join(strip_c_line_comments(path.read_text(encoding="utf-8", errors="replace"))
                        for path in sorted((ROOT / "Maze").glob("*.m")))
     readme = read("README.md")
     vision = read("VISION.md")
     security = read("SECURITY.md")
     changes = read("CHANGES.md")
+    agent_guidance = read("AGENTS.md")
     ci_workflow = read(".github/workflows/check.yml")
     gitignore = read(".gitignore")
     makefile = read("Makefile")
@@ -168,6 +194,11 @@ def main():
     hosted_validation_plan = HOSTED_VALIDATION_PLAN.read_text(encoding="utf-8") if HOSTED_VALIDATION_PLAN.exists() else ""
     corrected_collision_plan = CORRECTED_COLLISION_PLAN.read_text(encoding="utf-8") if CORRECTED_COLLISION_PLAN.exists() else ""
     main_thread_motion_plan = MAIN_THREAD_MOTION_PLAN.read_text(encoding="utf-8") if MAIN_THREAD_MOTION_PLAN.exists() else ""
+    finite_motion_plan = FINITE_MOTION_PLAN.read_text(encoding="utf-8") if FINITE_MOTION_PLAN.exists() else ""
+    location_independent_make_plan = LOCATION_INDEPENDENT_MAKE_PLAN.read_text(encoding="utf-8") if LOCATION_INDEPENDENT_MAKE_PLAN.exists() else ""
+    motion_test_plan = MOTION_TEST_PLAN.read_text(encoding="utf-8") if MOTION_TEST_PLAN.exists() else ""
+    active_motion_plan = ACTIVE_MOTION_PLAN.read_text(encoding="utf-8") if ACTIVE_MOTION_PLAN.exists() else ""
+    accelerometer_availability_plan = ACCELEROMETER_AVAILABILITY_PLAN.read_text(encoding="utf-8") if ACCELEROMETER_AVAILABILITY_PLAN.exists() else ""
 
     shell_result = subprocess.run(["sh", "-n", "build.sh"], cwd=str(ROOT), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     require(shell_result.returncode == 0,
@@ -175,13 +206,17 @@ def main():
             failures)
     require("function ci_build" not in build_script,
             "build.sh must remain POSIX-compatible", failures)
+    require(build_script.startswith("#!/bin/sh\n"),
+            "build.sh must start with a POSIX shebang",
+            failures)
     require("command -v xcodebuild" in build_script and "xcodebuild unavailable" in build_script,
             "build.sh must skip cleanly on hosts without Xcode",
             failures)
     require('xcodebuild -project "Maze.xcodeproj"' in build_script and '-scheme "Maze"' in build_script and
             '-destination "generic/platform=iOS Simulator"' in build_script and '-configuration "Debug"' in build_script and
-            "CODE_SIGNING_ALLOWED=NO" in build_script,
-            "build.sh must compile the unsigned Maze Debug target for a generic simulator",
+            "CODE_SIGNING_ALLOWED=NO" in build_script and '-derivedDataPath "$DERIVED_DATA_DIR"' in build_script and
+            'mktemp -d "${TMPDIR:-/tmp}/ios-pacman-derived-data.XXXXXX"' in build_script,
+            "build.sh must compile the unsigned Maze Debug target for a generic simulator with temp-scoped DerivedData",
             failures)
 
     require(app_plist.get("CFBundleIdentifier") == "$(PRODUCT_BUNDLE_IDENTIFIER)",
@@ -196,6 +231,11 @@ def main():
             failures)
     require("CLANG_ENABLE_OBJC_ARC = YES;" in project and "CoreMotion.framework" in project and "QuartzCore.framework" in project,
             "Xcode project must keep ARC and gameplay framework references",
+            failures)
+    require(project.count("APPMotionValidation.c in Sources") == 2 and
+            "path = APPMotionValidation.c;" in project and
+            "path = APPMotionValidation.h;" in project,
+            "Xcode project must compile shared motion validation and expose its header",
             failures)
     for resource in ["pacman.png", "wall.png", "squareWall.png", "exit.png", "ghost.png", "APPViewController.xib"]:
         require(resource in project,
@@ -214,18 +254,101 @@ def main():
     require("error != nil || accelerometerData == nil" in source and "- (void)dealloc" in source,
             "Objective-C source must ignore unavailable motion samples and stop updates during teardown",
             failures)
-    sample_capture_index = view_controller.find("CMAcceleration acceleration = accelerometerData.acceleration;")
-    main_dispatch_index = view_controller.find("dispatch_async(dispatch_get_main_queue(), ^{")
+    start_method_index = view_controller.find("- (void)startMotionUpdates")
+    stop_method_index = view_controller.find("- (void)stopMotionUpdates")
+    callback_index = view_controller.find("startAccelerometerUpdatesToQueue:self.queue withHandler:")
+    duplicate_start_guard_index = view_controller.find(
+        "if (self.gameCompleted\n        || ![self.motionManager isAccelerometerAvailable]\n        || [self.motionManager isAccelerometerActive]) {",
+        start_method_index,
+    )
+    availability_guard_index = view_controller.find(
+        "![self.motionManager isAccelerometerAvailable]",
+        start_method_index,
+    )
+    generation_increment_index = view_controller.find(
+        "self.motionUpdateGeneration += 1;", duplicate_start_guard_index
+    )
+    generation_capture_index = view_controller.find(
+        "NSUInteger motionGeneration = self.motionUpdateGeneration;",
+        generation_increment_index,
+    )
+    resume_clock_index = view_controller.find(
+        "self.lastUpdateTime = [NSDate date];", generation_capture_index
+    )
+    sample_capture_index = view_controller.find("CMAcceleration acceleration = accelerometerData.acceleration;", callback_index)
+    finite_guard = "if (!APPMotionComponentsAreSafeForIntegration(acceleration.x, acceleration.y, acceleration.z)) {\n             return;\n         }"
+    finite_guard_index = view_controller.find(finite_guard, sample_capture_index)
+    main_dispatch_index = view_controller.find("dispatch_async(dispatch_get_main_queue(), ^{", sample_capture_index)
     strong_capture_index = view_controller.find("APPViewController *strongSelf = weakSelf;", main_dispatch_index)
+    stale_generation_index = view_controller.find(
+        "if (strongSelf.motionUpdateGeneration != motionGeneration", strong_capture_index
+    )
     sample_assignment_index = view_controller.find("strongSelf.acceleration = acceleration;", main_dispatch_index)
     update_index = view_controller.find("[strongSelf update];", main_dispatch_index)
-    require("__weak APPViewController *weakSelf = self;" in source and
-            sample_capture_index != -1 and main_dispatch_index != -1 and
-            strong_capture_index != -1 and sample_assignment_index != -1 and update_index != -1 and
-            sample_capture_index < main_dispatch_index < strong_capture_index < sample_assignment_index < update_index and
-            "performSelectorOnMainThread" not in source,
-            "accelerometer samples must resolve weak capture, assign state, and update together on the main thread",
+    view_did_load = view_controller[view_controller.find("- (void)viewDidLoad"):start_method_index]
+    stop_method = view_controller[stop_method_index:view_controller.find("- (void)movePacman", stop_method_index)]
+    require("- (void)startMotionUpdates;" in view_header and
+            "- (void)stopMotionUpdates;" in view_header and
+            "@property (assign, nonatomic) NSUInteger motionUpdateGeneration;" in view_controller and
+            "startAccelerometerUpdatesToQueue" not in view_did_load and
+            start_method_index != -1 and stop_method_index != -1 and
+            duplicate_start_guard_index != -1 and availability_guard_index != -1 and
+            generation_increment_index != -1 and
+            generation_capture_index != -1 and resume_clock_index != -1 and callback_index != -1 and
+            start_method_index < duplicate_start_guard_index <= availability_guard_index < generation_increment_index < generation_capture_index < resume_clock_index < callback_index and
+            "self.motionUpdateGeneration += 1;" in stop_method and
+            "[self.motionManager stopAccelerometerUpdates];" in stop_method,
+            "motion ownership must use idempotent controller start/stop methods with generation invalidation and a fresh resume clock",
             failures)
+    require("#import \"APPMotionValidation.h\"" in view_controller and
+            "__weak APPViewController *weakSelf = self;" in source and
+            callback_index != -1 and sample_capture_index != -1 and finite_guard_index != -1 and main_dispatch_index != -1 and
+            strong_capture_index != -1 and stale_generation_index != -1 and
+            sample_assignment_index != -1 and update_index != -1 and
+            callback_index < sample_capture_index < finite_guard_index < main_dispatch_index < strong_capture_index < stale_generation_index < sample_assignment_index < update_index and
+            "|| ![strongSelf.motionManager isAccelerometerActive]" in view_controller[stale_generation_index:sample_assignment_index] and
+            "performSelectorOnMainThread" not in source,
+            "accelerometer samples must reject non-finite or stale generations before main-thread assignment and update",
+            failures)
+    will_resign_index = app_delegate.find("- (void)applicationWillResignActive:")
+    did_enter_background_index = app_delegate.find("- (void)applicationDidEnterBackground:")
+    did_become_active_index = app_delegate.find("- (void)applicationDidBecomeActive:")
+    will_terminate_index = app_delegate.find("- (void)applicationWillTerminate:")
+    require(will_resign_index != -1 and did_enter_background_index != -1 and
+            did_become_active_index != -1 and will_terminate_index != -1 and
+            "[self.viewController stopMotionUpdates];" in app_delegate[will_resign_index:did_enter_background_index] and
+            "[self.viewController stopMotionUpdates];" in app_delegate[did_enter_background_index:did_become_active_index] and
+            "[self.viewController startMotionUpdates];" in app_delegate[did_become_active_index:will_terminate_index] and
+            "[self.viewController stopMotionUpdates];" in app_delegate[will_terminate_index:],
+            "application lifecycle callbacks must stop motion on resign-active, background, and termination, then restart only after becoming active",
+            failures)
+    require("APPMotionMaximumAccelerationComponent 16.0" in read("Maze/APPMotionValidation.h") and
+            "APPMotionComponentsAreSafeForIntegration" in motion_validation and
+            "isfinite(value)" in motion_validation and
+            "fabs(value) <= APPMotionMaximumAccelerationComponent" in motion_validation,
+            "shared motion validation must reject non-finite and overflow-prone acceleration components",
+            failures)
+    for fragment in [
+        "APPMotionComponentsAreSafeForIntegration(0.0, 0.0, 0.0)",
+        "APPMotionComponentsAreSafeForIntegration(APPMotionMaximumAccelerationComponent",
+        "APPMotionComponentsAreSafeForIntegration(DBL_MAX, 0.0, 0.0)",
+        "APPMotionComponentsAreSafeForIntegration(0.0, -INFINITY, 0.0)",
+    ]:
+        require(fragment in motion_tests,
+                f"executable motion validation coverage is missing: {fragment}",
+                failures)
+    for fragment in [
+        '"$CC"',
+        '"$ROOT/Maze/APPMotionValidation.c"',
+        '"$ROOT/Tests/APPMotionValidationTests.c"',
+        '"$BUILD_DIR/motion-validation-tests"',
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+    ]:
+        require(fragment in motion_test_runner,
+                f"motion validation test runner is missing: {fragment}",
+                failures)
     require("NSTimeInterval secondsSinceLastDraw = -([self.lastUpdateTime timeIntervalSinceNow]);" in source and
             "secondsSinceLastDraw = MAX(0, MIN(secondsSinceLastDraw, 0.1));" in source,
             "gameplay updates must clamp frame time deltas before integrating accelerometer velocity",
@@ -249,7 +372,7 @@ def main():
     win_completed_index = view_controller.find("self.gameCompleted = YES;", exit_collision_index)
     win_x_velocity_reset_index = view_controller.find("self.pacmanXVelocity = 0;", exit_collision_index)
     win_y_velocity_reset_index = view_controller.find("self.pacmanYVelocity = 0;", exit_collision_index)
-    win_motion_stop_index = view_controller.find("[self.motionManager stopAccelerometerUpdates];", exit_collision_index)
+    win_motion_stop_index = view_controller.find("[self stopMotionUpdates];", exit_collision_index)
     win_alert_index = view_controller.find('UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Congratulations"', exit_collision_index)
     require(exit_collision_index != -1 and win_completed_index != -1 and
             win_x_velocity_reset_index != -1 and win_y_velocity_reset_index != -1 and
@@ -304,9 +427,25 @@ def main():
     require("*.local.xcconfig" in gitignore and ".env" in gitignore and "DerivedData" in gitignore,
             ".gitignore must exclude local config and Xcode build products",
             failures)
-    require(".PHONY: build check lint test" in makefile and "lint test build: check" in makefile and
-            "check:\n\tpython3 scripts/check-baseline.py\n\t./build.sh" in makefile,
-            "Makefile must expose lint, test, and build aliases and compile through the check gate when Xcode is available",
+    require(".PHONY: build check lint test" in makefile and
+            "CC ?= cc" in makefile and
+            "ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))" in makefile and
+            "lint test build: check" in makefile and
+            'CC="$(CC)" "$(ROOT)/scripts/run-motion-validation-tests.sh"' in makefile and
+            'python3 "$(ROOT)/scripts/check-baseline.py"' in makefile and
+            'cd "$(ROOT)" && ./build.sh' in makefile and
+            "python3 scripts/check-baseline.py" not in makefile and
+            "\n\t./build.sh" not in makefile,
+            "Makefile must expose location-independent aliases and compile through the check gate when Xcode is available",
+            failures)
+    require("status: completed" in motion_test_plan and
+            "make check" in motion_test_plan and
+            "hostile mutations" in motion_test_plan.lower(),
+            "executable motion validation plan must preserve completed verification evidence",
+            failures)
+    require("docs/plans/2026-06-16-executable-motion-validation-tests.md" in readme and
+            "executable C" in readme,
+            "README must document executable motion validation coverage",
             failures)
     require("make lint" in readme and "make test" in readme and "make build" in readme and "make check" in readme and "build.sh" in readme and "Maze.xcodeproj" in readme,
             "README must document static verification, build script, and project usage",
@@ -330,6 +469,12 @@ def main():
     require("previous position" in readme.lower(),
             "README must document previous-position initialization behavior",
             failures)
+    require("non-finite" in readme.lower() and "overflow-prone" in readme.lower() and "motion" in readme.lower(),
+            "README must document invalid and overflow-prone sensor sample rejection",
+            failures)
+    require("active app lifecycle" in readme.lower() and "stale queued motion" in readme.lower(),
+            "README must document active-app ownership and stale queued motion rejection",
+            failures)
     require("scripts/check-baseline.py" in vision and "make lint" in vision and "make test" in vision and "make build" in vision and "asset" in vision.lower() and
             "time delta" in vision.lower() and "collision alert" in vision.lower() and "alert pause" in vision.lower(),
             "VISION must describe the current static Objective-C game baseline",
@@ -349,6 +494,12 @@ def main():
     require("previous position" in vision.lower(),
             "VISION must describe previous-position initialization behavior",
             failures)
+    require("non-finite" in vision.lower() and "overflow-prone" in vision.lower() and "motion" in vision.lower(),
+            "VISION must describe invalid and overflow-prone sensor sample rejection",
+            failures)
+    require("active app lifecycle" in vision.lower() and "stale queued motion" in vision.lower(),
+            "VISION must describe active-app ownership and stale queued motion rejection",
+            failures)
     require("build.sh" in security and "make check" in security and "collision alert" in security.lower() and
             "alert pause" in security.lower() and "frame clock" in security.lower(),
             "SECURITY must document build script and static baseline guardrails",
@@ -364,6 +515,12 @@ def main():
             failures)
     require("previous position" in security.lower(),
             "SECURITY must document previous-position initialization guardrails",
+            failures)
+    require("non-finite" in security.lower() and "overflow-prone" in security.lower() and "motion" in security.lower(),
+            "SECURITY must document invalid and overflow-prone sensor sample guardrails",
+            failures)
+    require("active app lifecycle" in security.lower() and "stale queued motion" in security.lower(),
+            "SECURITY must document active-app ownership and stale queued motion guardrails",
             failures)
     require("/bin/sh" in changes and "without Xcode" in changes and "accelerometer" in changes and
             "weak" in changes.lower() and "time delta" in changes.lower() and
@@ -381,6 +538,12 @@ def main():
             failures)
     require("previous position" in changes.lower(),
             "CHANGES must record previous-position initialization behavior",
+            failures)
+    require("non-finite" in changes.lower() and "overflow-prone" in changes.lower() and "motion" in changes.lower(),
+            "CHANGES must record invalid and overflow-prone sensor sample rejection",
+            failures)
+    require("active app lifecycle" in changes.lower() and "stale queued motion" in changes.lower(),
+            "CHANGES must record active-app ownership and stale queued motion rejection",
             failures)
     require("GitHub Actions" in changes,
             "CHANGES must record hosted baseline coverage",
@@ -426,8 +589,109 @@ def main():
             "hosted validation plan must document completed Python and simulator validation", failures)
     require("status: completed" in corrected_collision_plan and "generic iOS simulator" in corrected_collision_plan,
             "corrected collision build plan must be completed", failures)
-    require("status: completed" in main_thread_motion_plan and "mutation" in main_thread_motion_plan.lower(),
-            "main-thread motion handoff plan must record completed mutation verification", failures)
+    require("status: completed" in finite_motion_plan and
+            "All four Make gates" in finite_motion_plan and
+            "hostile mutations" in finite_motion_plan.lower(),
+            "non-finite motion sample plan must record completed status and verification",
+            failures)
+    require("title: Active-App Motion Lifecycle" in active_motion_plan and
+            "type: fix" in active_motion_plan and
+            "date: 2026-06-17" in active_motion_plan and
+            "R1." in active_motion_plan and "R7." in active_motion_plan and
+            not re.search(r"(?mi)^status:\s*", active_motion_plan),
+            "active-app motion lifecycle plan must preserve modern metadata and requirements without legacy status fields",
+            failures)
+    accelerometer_availability_statuses = re.findall(
+        r"(?mi)^status:\s*(.+?)\s*$", accelerometer_availability_plan
+    )
+    accelerometer_availability_verification = markdown_section(
+        accelerometer_availability_plan, "Verification Completed"
+    )
+    accelerometer_availability_required = (
+        "All four Make gates",
+        "absolute Makefile",
+        "python3 -m py_compile scripts/check-baseline.py",
+        "sh -n build.sh",
+        "sh -n scripts/run-motion-validation-tests.sh",
+        "Six isolated hostile mutations",
+        "git diff --check",
+        "xcodebuild was unavailable",
+    )
+    require(accelerometer_availability_statuses == ["completed"] and
+            all(item in accelerometer_availability_verification
+                for item in accelerometer_availability_required) and
+            not re.search(r"(?i)\b(?:pending|todo|tbd|not run)\b",
+                          accelerometer_availability_verification),
+            "accelerometer availability plan must record completed verification",
+            failures)
+    normalized_guidance = [
+        " ".join(document.lower().split())
+        for document in [readme, security, vision, changes, agent_guidance]
+    ]
+    require(all("accelerometer availability guard" in document
+                for document in normalized_guidance),
+            "project guidance must document the accelerometer availability guard",
+            failures)
+    location_make_statuses = re.findall(
+        r"^status: .+$", location_independent_make_plan, flags=re.MULTILINE
+    )
+    location_make_verification = markdown_section(
+        location_independent_make_plan, "Verification Completed"
+    )
+    require(location_make_statuses == ["status: completed"] and
+            "All four Make gates passed from the checkout" in location_make_verification and
+            "All four Make gates passed from `/tmp` through the absolute Makefile path" in location_make_verification and
+            "python3 -m py_compile scripts/check-baseline.py" in location_make_verification and
+            "sh -n build.sh" in location_make_verification and
+            "project metadata parsing" in location_make_verification and
+            "git diff --check" in location_make_verification and
+            "`xcodebuild` was unavailable" in location_make_verification and
+            "Six isolated hostile mutations were rejected" in location_make_verification and
+            re.search(r"\b(?:pending|todo|tbd|not run)\b",
+                      location_make_verification,
+                      re.IGNORECASE) is None,
+            "location-independent Make plan must record completed status and actual local verification",
+            failures)
+    require("absolute makefile path" in readme.lower() and
+            "location-independent" in changes.lower(),
+            "README and CHANGES must document location-independent Make verification",
+            failures)
+    main_thread_motion_status = re.findall(
+        r"(?mi)^status:\s*(.+?)\s*$", main_thread_motion_plan
+    )
+    main_thread_motion_work = markdown_section(main_thread_motion_plan, "Work Completed")
+    main_thread_motion_verification = markdown_section(
+        main_thread_motion_plan, "Verification Completed"
+    )
+    require(main_thread_motion_status == ["completed"] and main_thread_motion_work,
+            "main-thread motion handoff plan must record one completed status and completed work",
+            failures)
+    require(main_thread_motion_verification and
+            not re.search(r"(?i)\b(?:pending|todo|tbd|not run)\b", main_thread_motion_verification),
+            "main-thread motion handoff plan must record finished verification without pending markers",
+            failures)
+    for evidence in [
+        "make check",
+        "make lint",
+        "make test",
+        "make build",
+        "python3 -m py_compile scripts/check-baseline.py",
+        "sh -n build.sh",
+        "git diff --check",
+        "27395230698",
+        "27395235753",
+        "27395277519",
+        "27402323504",
+        "6e06f5d1a53d3b471d192b34c2c1af70d16b4b7e",
+        "0478d9fc14bf406ce0df7d5c8362e9477075951c",
+        "dispatch_async(dispatch_get_main_queue(), ^{",
+        "APPViewController *strongSelf = weakSelf;",
+        "strongSelf.acceleration = acceleration;",
+        "[strongSelf update];",
+    ]:
+        require(evidence in main_thread_motion_verification,
+                f"main-thread motion handoff plan must preserve verification evidence: {evidence}",
+                failures)
     require(ci_workflow.count("permissions:\n  contents: read") == 1 and
             not re.search(r"(?m)^\s{2,}permissions:\s*$", ci_workflow) and
             not re.search(r"(?m)^\s+[A-Za-z0-9_-]+:\s*write\s*$", ci_workflow) and

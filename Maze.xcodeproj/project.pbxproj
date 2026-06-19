@@ -22,6 +22,7 @@
 		35C6E37C172D3DDE00EA260D /* Default@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 35C6E37B172D3DDE00EA260D /* Default@2x.png */; };
 		35C6E37E172D3DDE00EA260D /* Default-568h@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 35C6E37D172D3DDE00EA260D /* Default-568h@2x.png */; };
 		35C6E381172D3DDE00EA260D /* APPViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 35C6E380172D3DDE00EA260D /* APPViewController.m */; };
+		A1606161172D3DDE00EA260D /* APPMotionValidation.c in Sources */ = {isa = PBXBuildFile; fileRef = A1606162172D3DDE00EA260D /* APPMotionValidation.c */; };
 		35C6E384172D3DDE00EA260D /* APPViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 35C6E382172D3DDE00EA260D /* APPViewController.xib */; };
 		F483D2D417512FD8007C1170 /* ghost.png in Resources */ = {isa = PBXBuildFile; fileRef = F483D2D217512FD8007C1170 /* ghost.png */; };
 		F483D2D517512FD8007C1170 /* squareWall.png in Resources */ = {isa = PBXBuildFile; fileRef = F483D2D317512FD8007C1170 /* squareWall.png */; };
@@ -47,6 +48,8 @@
 		35C6E37D172D3DDE00EA260D /* Default-568h@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default-568h@2x.png"; sourceTree = "<group>"; };
 		35C6E37F172D3DDE00EA260D /* APPViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = APPViewController.h; sourceTree = "<group>"; };
 		35C6E380172D3DDE00EA260D /* APPViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = APPViewController.m; sourceTree = "<group>"; };
+		A1606162172D3DDE00EA260D /* APPMotionValidation.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = APPMotionValidation.c; sourceTree = "<group>"; };
+		A1606163172D3DDE00EA260D /* APPMotionValidation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = APPMotionValidation.h; sourceTree = "<group>"; };
 		35C6E383172D3DDE00EA260D /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/APPViewController.xib; sourceTree = "<group>"; };
 		35C6E38A172D416000EA260D /* CoreMotion.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMotion.framework; path = System/Library/Frameworks/CoreMotion.framework; sourceTree = SDKROOT; };
 		F483D2D217512FD8007C1170 /* ghost.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = ghost.png; sourceTree = "<group>"; };
@@ -105,6 +108,8 @@
 				35C6E377172D3DDE00EA260D /* APPAppDelegate.m */,
 				35C6E37F172D3DDE00EA260D /* APPViewController.h */,
 				35C6E380172D3DDE00EA260D /* APPViewController.m */,
+				A1606162172D3DDE00EA260D /* APPMotionValidation.c */,
+				A1606163172D3DDE00EA260D /* APPMotionValidation.h */,
 				35C6E382172D3DDE00EA260D /* APPViewController.xib */,
 				35C6E36E172D3DDE00EA260D /* Supporting Files */,
 			);
@@ -211,6 +216,7 @@
 				35C6E374172D3DDE00EA260D /* main.m in Sources */,
 				35C6E378172D3DDE00EA260D /* APPAppDelegate.m in Sources */,
 				35C6E381172D3DDE00EA260D /* APPViewController.m in Sources */,
+				A1606161172D3DDE00EA260D /* APPMotionValidation.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
