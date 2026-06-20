@@ -1,7 +1,7 @@
 .PHONY: build check lint test
 
 CC ?= cc
-ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+override ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
 lint test build: check
 
