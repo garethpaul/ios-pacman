@@ -429,7 +429,7 @@ def main():
             failures)
     require(".PHONY: build check lint test" in makefile and
             "CC ?= cc" in makefile and
-            "ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))" in makefile and
+            "override ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))" in makefile and
             "lint test build: check" in makefile and
             'CC="$(CC)" "$(ROOT)/scripts/run-motion-validation-tests.sh"' in makefile and
             'python3 "$(ROOT)/scripts/check-baseline.py"' in makefile and
