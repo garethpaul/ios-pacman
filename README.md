@@ -5,7 +5,8 @@
 
 ## Overview
 
-`garethpaul/ios-pacman` is an Apple platform application or Swift sample. Pacman iOS Game
+`garethpaul/ios-pacman` is a legacy Objective-C iOS Pac-Man game with a small
+shared C motion-validation component.
 
 This README is based on the checked-in source, manifests, scripts, and repository metadata on the `master` branch. The project language mix found during review was: Objective-C (3), C (2), C/C++ headers (3), shell (2).
 
@@ -26,7 +27,8 @@ Additional scan context:
 - Source directories: Maze
 - Dependency and build manifests: none detected
 - Entry points or build surfaces: `make check`, build.sh, Maze.xcodeproj
-- Test-looking files: no obvious test files detected
+- Executable test: `Tests/APPMotionValidationTests.c`, compiled and run by
+  `make check` through `scripts/run-motion-validation-tests.sh`
 
 ## Getting Started
 
@@ -51,7 +53,8 @@ The checked-in project has no external dependency manifest. Use Xcode for full b
 
 ## Running or Using the Project
 
-- Open `Maze.xcodeproj` in Xcode, choose the app or sample scheme, and run it on the matching simulator/device.
+- Open `Maze.xcodeproj` in Xcode, choose the sole shared `Maze` scheme, and run
+  it on a compatible simulator or device.
 - Run `./build.sh` when the required platform toolchain is installed. On hosts without Xcode, the script exits cleanly after reporting that the Xcode build was skipped. Xcode DerivedData stays in a temp directory unless `DERIVED_DATA_DIR` is set.
 - This is a local game sample with XIB-wired image assets and CoreMotion movement. The accelerometer availability guard rejects unsupported hardware before motion startup state changes. Non-finite or overflow-prone motion samples are rejected before each valid accelerometer sample is assigned and integrated together on the main thread. Gameplay updates clamp the frame time delta before applying accelerometer velocity, resolve boundary and wall constraints before evaluating the corrected collision frame, stop outcome checks after a win, gate collision alerts while visible, and reset the frame clock after alerts. Do not add accounts, analytics, persistence, upload, or network behavior without a dedicated design and security review.
 
@@ -81,6 +84,11 @@ alert pause behavior, alert frame clock reset behavior, frame time delta
 clamping, and weak callback capture guardrails, and guards against debug
 logging, network, analytics, upload, or persistence behavior.
 
+`Tests/APPMotionValidationTests.c` is a standalone C behavioral harness rather
+than an Xcode test target. The shared `Maze` scheme has no Xcode testable
+references, so use `make check` for the executable tests and Xcode Build or
+`./build.sh` for the app target.
+
 Pinned `macos-15` CI runs `make check` and compiles the unsigned app for a
 generic iOS simulator. It does not exercise accelerometer input, alerts,
 rendering, or gameplay.
@@ -88,7 +96,9 @@ rendering, or gameplay.
 GitHub Actions runs the same `make check` static baseline with Python 3.12 for
 pushes and pull requests.
 
-For full legacy verification on macOS, run `./build.sh` or use Xcode's build/test action with the appropriate scheme and destination. `build.sh` directs DerivedData to a temp directory by default.
+For full legacy build verification on macOS, run `./build.sh` or build the
+`Maze` scheme in Xcode with an appropriate destination. `build.sh` directs
+DerivedData to a temp directory by default.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -109,7 +119,9 @@ When the required SDK or runtime is unavailable, use static checks and source re
 
 ## Maintenance Notes
 
-- This looks like an Apple platform project or sample. Xcode, Swift, CocoaPods, and deployment target versions may need to match the original project era.
+- This is a self-contained Objective-C/C Xcode project with no external
+  dependency manifest. Xcode and deployment target compatibility may still
+  reflect the original project era.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.
 - See `docs/plans/2026-06-09-alert-update-pause.md` for the alert pause guardrail.
