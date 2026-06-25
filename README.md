@@ -115,6 +115,9 @@ When the required SDK or runtime is unavailable, use static checks and source re
   or overflow-prone motion samples should be rejected, updates should follow the
   active app lifecycle, and stale queued motion should not cross pause/resume
   boundaries.
+- Ghost collision alerts stop accelerometer delivery while the modal prompt is
+  visible. Dismissal clears the alert guard, refreshes the frame clock, and then
+  resumes motion; terminal win alerts remain stopped.
 - `build.sh` should stay valid for `/bin/sh` because CI and local shells may not invoke bash.
 
 ## Maintenance Notes
@@ -135,6 +138,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   shared finite-sample predicate and executable C behavioral gate.
 - See `docs/plans/2026-06-17-018-fix-active-motion-lifecycle-plan.md` for active
   app lifecycle ownership and stale queued motion rejection.
+- See `docs/plans/2026-06-25-pause-motion-during-alerts.md` for collision-alert
+  sensor suspension and guarded dismissal resume behavior.
 - See `docs/plans/2026-06-10-ci-baseline.md` for the GitHub Actions static
   baseline.
 - See `docs/plans/2026-06-09-make-gate-aliases.md` for the local gate alias guardrail.

@@ -65,6 +65,7 @@
 
 - (void)startMotionUpdates {
     if (self.gameCompleted
+        || self.collisionAlertVisible
         || ![self.motionManager isAccelerometerAvailable]
         || [self.motionManager isAccelerometerActive]) {
         return;
@@ -187,6 +188,7 @@
         self.pacmanXVelocity = 0;
         self.pacmanYVelocity = 0;
         self.collisionAlertVisible = YES;
+        [self stopMotionUpdates];
         
         UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Oops!"
                                                   message:@"Mission Failed!"
@@ -280,6 +282,7 @@
 {
     self.collisionAlertVisible = NO;
     self.lastUpdateTime = [NSDate date];
+    [self startMotionUpdates];
 }
 
 - (void)dealloc

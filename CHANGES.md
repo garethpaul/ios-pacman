@@ -1,5 +1,48 @@
 # Changes
 
+## 2026-06-25 05:18 - P2 - Pause motion delivery during collision alerts
+
+### Summary
+Stopped Core Motion delivery while a ghost collision alert owns the game screen
+and resumed only after dismissal clears the alert guard.
+
+### Work completed
+- Added collision-alert visibility to the motion startup guard.
+- Invalidated and stopped the active accelerometer stream before failure alerts.
+- Restarted non-terminal motion after alert dismissal and clock refresh.
+
+### Threads
+- Started: none — work completed directly in the current repository.
+- Continued: none.
+- Stopped: none.
+
+### Files changed
+- `Maze/APPViewController.m` — enforced alert-scoped motion ownership.
+- `scripts/check-baseline.py` — added ordered pause/resume source contracts.
+- Documentation and plan files — recorded behavior, evidence, and boundaries.
+
+### Validation
+- `python3 scripts/check-baseline.py` — failed in three expected lifecycle
+  contracts before implementation and passed afterward.
+- `/usr/bin/make check` — passed the executable C harness, static baseline, and
+  conditional build gate; Xcode was unavailable locally.
+- Three isolated hostile mutations removing the guard, stop, or restart were
+  rejected by their focused contracts.
+- `python3 -m py_compile scripts/check-baseline.py`, shell syntax checks, and
+  `git diff --check` — passed.
+- Hosted Xcode and CodeQL checks — pending PR verification.
+
+### Bugs / findings
+- P2: modal collision alerts paused gameplay state updates but left the 60 Hz
+  accelerometer stream and callback dispatch active behind the prompt.
+
+### Blockers
+- `xcodebuild` is unavailable locally; hosted macOS CI remains authoritative for
+  Objective-C, UIKit, and Core Motion compilation.
+
+### Next action
+- Open a PR and complete Codex plus hosted review before merge.
+
 ## 2026-06-18
 
 - Kept Xcode build artifacts temp-scoped through `build.sh`, stopped motion on
