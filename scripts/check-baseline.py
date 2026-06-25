@@ -28,6 +28,7 @@ LOCATION_INDEPENDENT_MAKE_PLAN = ROOT / "docs/plans/2026-06-13-location-independ
 MOTION_TEST_PLAN = ROOT / "docs/plans/2026-06-16-executable-motion-validation-tests.md"
 ACTIVE_MOTION_PLAN = ROOT / "docs/plans/2026-06-17-018-fix-active-motion-lifecycle-plan.md"
 ACCELEROMETER_AVAILABILITY_PLAN = ROOT / "docs/plans/2026-06-18-accelerometer-availability-guard.md"
+ALERT_MOTION_PLAN = ROOT / "docs/plans/2026-06-25-pause-motion-during-alerts.md"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -131,6 +132,7 @@ def main():
         "docs/plans/2026-06-13-location-independent-make.md",
         "docs/plans/2026-06-16-executable-motion-validation-tests.md",
         "docs/plans/2026-06-17-018-fix-active-motion-lifecycle-plan.md",
+        "docs/plans/2026-06-25-pause-motion-during-alerts.md",
         "docs/readme-overview.svg",
         "Tests/APPMotionValidationTests.c",
         "scripts/run-motion-validation-tests.sh",
@@ -199,6 +201,7 @@ def main():
     motion_test_plan = MOTION_TEST_PLAN.read_text(encoding="utf-8") if MOTION_TEST_PLAN.exists() else ""
     active_motion_plan = ACTIVE_MOTION_PLAN.read_text(encoding="utf-8") if ACTIVE_MOTION_PLAN.exists() else ""
     accelerometer_availability_plan = ACCELEROMETER_AVAILABILITY_PLAN.read_text(encoding="utf-8") if ACCELEROMETER_AVAILABILITY_PLAN.exists() else ""
+    alert_motion_plan = ALERT_MOTION_PLAN.read_text(encoding="utf-8") if ALERT_MOTION_PLAN.exists() else ""
 
     shell_result = subprocess.run(["sh", "-n", "build.sh"], cwd=str(ROOT), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     require(shell_result.returncode == 0,
@@ -258,7 +261,7 @@ def main():
     stop_method_index = view_controller.find("- (void)stopMotionUpdates")
     callback_index = view_controller.find("startAccelerometerUpdatesToQueue:self.queue withHandler:")
     duplicate_start_guard_index = view_controller.find(
-        "if (self.gameCompleted\n        || ![self.motionManager isAccelerometerAvailable]\n        || [self.motionManager isAccelerometerActive]) {",
+        "if (self.gameCompleted\n        || self.collisionAlertVisible\n        || ![self.motionManager isAccelerometerAvailable]\n        || [self.motionManager isAccelerometerActive]) {",
         start_method_index,
     )
     availability_guard_index = view_controller.find(
@@ -384,18 +387,26 @@ def main():
     failure_position_reset_index = view_controller.find("self.currentPoint  = CGPointMake(0, 144);", ghost_collision_index)
     failure_x_velocity_reset_index = view_controller.find("self.pacmanXVelocity = 0;", ghost_collision_index)
     failure_y_velocity_reset_index = view_controller.find("self.pacmanYVelocity = 0;", ghost_collision_index)
+    failure_alert_visible_index = view_controller.find("self.collisionAlertVisible = YES;", ghost_collision_index)
+    failure_motion_stop_index = view_controller.find("[self stopMotionUpdates];", ghost_collision_index)
     failure_alert_index = view_controller.find('UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Oops!"', ghost_collision_index)
     require(ghost_collision_index != -1 and failure_position_reset_index != -1 and
             failure_x_velocity_reset_index != -1 and failure_y_velocity_reset_index != -1 and
+            failure_alert_visible_index != -1 and failure_motion_stop_index != -1 and
             failure_alert_index != -1 and
-            failure_position_reset_index < failure_x_velocity_reset_index < failure_y_velocity_reset_index < failure_alert_index,
-            "failure collision handling must reset position and velocities before showing the alert",
+            failure_position_reset_index < failure_x_velocity_reset_index < failure_y_velocity_reset_index <
+            failure_alert_visible_index < failure_motion_stop_index < failure_alert_index,
+            "failure collision handling must reset movement and stop motion before showing the alert",
             failures)
     alert_dismiss = re.search(r"- \(void\)alertView:\(UIAlertView \*\)alertView didDismissWithButtonIndex:\(NSInteger\)buttonIndex[\s\S]+?\n}", view_controller)
     require(alert_dismiss is not None and
             "self.collisionAlertVisible = NO;" in alert_dismiss.group(0) and
-            "self.lastUpdateTime = [NSDate date];" in alert_dismiss.group(0),
-            "alert dismissal must reset the frame clock before gameplay resumes",
+            "self.lastUpdateTime = [NSDate date];" in alert_dismiss.group(0) and
+            "[self startMotionUpdates];" in alert_dismiss.group(0) and
+            alert_dismiss.group(0).find("self.collisionAlertVisible = NO;") <
+            alert_dismiss.group(0).find("self.lastUpdateTime = [NSDate date];") <
+            alert_dismiss.group(0).find("[self startMotionUpdates];"),
+            "alert dismissal must reset the frame clock and restart motion after clearing the alert guard",
             failures)
     require("- (void)update {\n    if (self.collisionAlertVisible || self.gameCompleted) {\n        return;\n    }" in view_controller,
             "gameplay updates must pause while collision alerts are visible or the game is completed",
@@ -442,6 +453,12 @@ def main():
             "make check" in motion_test_plan and
             "hostile mutations" in motion_test_plan.lower(),
             "executable motion validation plan must preserve completed verification evidence",
+            failures)
+    require("status: completed" in alert_motion_plan and
+            "stopMotionUpdates" in alert_motion_plan and
+            "startMotionUpdates" in alert_motion_plan and
+            "hostile mutations" in alert_motion_plan.lower(),
+            "collision-alert motion plan must record completed pause/resume verification",
             failures)
     require("docs/plans/2026-06-16-executable-motion-validation-tests.md" in readme and
             "executable C" in readme,
