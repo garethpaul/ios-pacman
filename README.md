@@ -115,6 +115,7 @@ When the required SDK or runtime is unavailable, use static checks and source re
   or overflow-prone motion samples should be rejected, updates should follow the
   active app lifecycle, and stale queued motion should not cross pause/resume
   boundaries.
+- Motion startup requires UIApplicationStateActive at the controller boundary.
 - Ghost collision alerts stop accelerometer delivery while the modal prompt is
   visible. Dismissal clears the alert guard, refreshes the frame clock, and then
   resumes motion; terminal win alerts remain stopped.

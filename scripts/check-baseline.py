@@ -30,6 +30,7 @@ ACTIVE_MOTION_PLAN = ROOT / "docs/plans/2026-06-17-018-fix-active-motion-lifecyc
 ACCELEROMETER_AVAILABILITY_PLAN = ROOT / "docs/plans/2026-06-18-accelerometer-availability-guard.md"
 ALERT_MOTION_PLAN = ROOT / "docs/plans/2026-06-25-pause-motion-during-alerts.md"
 WALL_FRAME_REFRESH_PLAN = ROOT / "docs/plans/2026-06-26-refresh-wall-collision-frame.md"
+ACTIVE_START_GUARD_PLAN = ROOT / "docs/plans/2026-06-26-active-motion-start-guard.md"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -135,6 +136,7 @@ def main():
         "docs/plans/2026-06-17-018-fix-active-motion-lifecycle-plan.md",
         "docs/plans/2026-06-25-pause-motion-during-alerts.md",
         "docs/plans/2026-06-26-refresh-wall-collision-frame.md",
+        "docs/plans/2026-06-26-active-motion-start-guard.md",
         "docs/readme-overview.svg",
         "Tests/APPMotionValidationTests.c",
         "scripts/run-motion-validation-tests.sh",
@@ -205,6 +207,21 @@ def main():
     accelerometer_availability_plan = ACCELEROMETER_AVAILABILITY_PLAN.read_text(encoding="utf-8") if ACCELEROMETER_AVAILABILITY_PLAN.exists() else ""
     alert_motion_plan = ALERT_MOTION_PLAN.read_text(encoding="utf-8") if ALERT_MOTION_PLAN.exists() else ""
     wall_frame_refresh_plan = WALL_FRAME_REFRESH_PLAN.read_text(encoding="utf-8") if WALL_FRAME_REFRESH_PLAN.exists() else ""
+    active_start_guard_plan = ACTIVE_START_GUARD_PLAN.read_text(encoding="utf-8") if ACTIVE_START_GUARD_PLAN.exists() else ""
+
+    active_start_contract = "Motion startup requires UIApplicationStateActive at the controller boundary."
+    for path, source_text in [
+        ("README.md", readme),
+        ("SECURITY.md", security),
+        ("VISION.md", vision),
+        ("CHANGES.md", changes),
+    ]:
+        require(active_start_contract in source_text,
+                f"{path} must keep the active motion start contract", failures)
+    require("Status: Completed" in active_start_guard_plan and
+            "make check" in active_start_guard_plan,
+            "active motion start guard plan must record completed verification",
+            failures)
 
     shell_result = subprocess.run(["sh", "-n", "build.sh"], cwd=str(ROOT), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     require(shell_result.returncode == 0,
@@ -264,11 +281,15 @@ def main():
     stop_method_index = view_controller.find("- (void)stopMotionUpdates")
     callback_index = view_controller.find("startAccelerometerUpdatesToQueue:self.queue withHandler:")
     duplicate_start_guard_index = view_controller.find(
-        "if (self.gameCompleted\n        || self.collisionAlertVisible\n        || ![self.motionManager isAccelerometerAvailable]\n        || [self.motionManager isAccelerometerActive]) {",
+        "if (self.gameCompleted\n        || self.collisionAlertVisible\n        || [UIApplication sharedApplication].applicationState != UIApplicationStateActive\n        || ![self.motionManager isAccelerometerAvailable]\n        || [self.motionManager isAccelerometerActive]) {",
         start_method_index,
     )
     availability_guard_index = view_controller.find(
         "![self.motionManager isAccelerometerAvailable]",
+        start_method_index,
+    )
+    active_application_guard_index = view_controller.find(
+        "[UIApplication sharedApplication].applicationState != UIApplicationStateActive",
         start_method_index,
     )
     generation_increment_index = view_controller.find(
@@ -298,10 +319,10 @@ def main():
             "@property (assign, nonatomic) NSUInteger motionUpdateGeneration;" in view_controller and
             "startAccelerometerUpdatesToQueue" not in view_did_load and
             start_method_index != -1 and stop_method_index != -1 and
-            duplicate_start_guard_index != -1 and availability_guard_index != -1 and
+            duplicate_start_guard_index != -1 and active_application_guard_index != -1 and availability_guard_index != -1 and
             generation_increment_index != -1 and
             generation_capture_index != -1 and resume_clock_index != -1 and callback_index != -1 and
-            start_method_index < duplicate_start_guard_index <= availability_guard_index < generation_increment_index < generation_capture_index < resume_clock_index < callback_index and
+            start_method_index < duplicate_start_guard_index <= active_application_guard_index < availability_guard_index < generation_increment_index < generation_capture_index < resume_clock_index < callback_index and
             "self.motionUpdateGeneration += 1;" in stop_method and
             "[self.motionManager stopAccelerometerUpdates];" in stop_method,
             "motion ownership must use idempotent controller start/stop methods with generation invalidation and a fresh resume clock",

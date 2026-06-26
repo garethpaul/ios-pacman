@@ -66,6 +66,7 @@
 - (void)startMotionUpdates {
     if (self.gameCompleted
         || self.collisionAlertVisible
+        || [UIApplication sharedApplication].applicationState != UIApplicationStateActive
         || ![self.motionManager isAccelerometerAvailable]
         || [self.motionManager isAccelerometerActive]) {
         return;
