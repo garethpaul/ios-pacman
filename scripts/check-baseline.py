@@ -29,6 +29,7 @@ MOTION_TEST_PLAN = ROOT / "docs/plans/2026-06-16-executable-motion-validation-te
 ACTIVE_MOTION_PLAN = ROOT / "docs/plans/2026-06-17-018-fix-active-motion-lifecycle-plan.md"
 ACCELEROMETER_AVAILABILITY_PLAN = ROOT / "docs/plans/2026-06-18-accelerometer-availability-guard.md"
 ALERT_MOTION_PLAN = ROOT / "docs/plans/2026-06-25-pause-motion-during-alerts.md"
+WALL_FRAME_REFRESH_PLAN = ROOT / "docs/plans/2026-06-26-refresh-wall-collision-frame.md"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -133,6 +134,7 @@ def main():
         "docs/plans/2026-06-16-executable-motion-validation-tests.md",
         "docs/plans/2026-06-17-018-fix-active-motion-lifecycle-plan.md",
         "docs/plans/2026-06-25-pause-motion-during-alerts.md",
+        "docs/plans/2026-06-26-refresh-wall-collision-frame.md",
         "docs/readme-overview.svg",
         "Tests/APPMotionValidationTests.c",
         "scripts/run-motion-validation-tests.sh",
@@ -202,6 +204,7 @@ def main():
     active_motion_plan = ACTIVE_MOTION_PLAN.read_text(encoding="utf-8") if ACTIVE_MOTION_PLAN.exists() else ""
     accelerometer_availability_plan = ACCELEROMETER_AVAILABILITY_PLAN.read_text(encoding="utf-8") if ACCELEROMETER_AVAILABILITY_PLAN.exists() else ""
     alert_motion_plan = ALERT_MOTION_PLAN.read_text(encoding="utf-8") if ALERT_MOTION_PLAN.exists() else ""
+    wall_frame_refresh_plan = WALL_FRAME_REFRESH_PLAN.read_text(encoding="utf-8") if WALL_FRAME_REFRESH_PLAN.exists() else ""
 
     shell_result = subprocess.run(["sh", "-n", "build.sh"], cwd=str(ROOT), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     require(shell_result.returncode == 0,
@@ -427,6 +430,18 @@ def main():
             view_controller.count("CGRectIntersectsRect(pacmanFrame,") == 4 and "collsionWithWalls" not in view_controller,
             "outcome collisions must use the corrected candidate frame and the wall handler must keep its corrected spelling",
             failures)
+    wall_method = view_controller[
+        view_controller.find("- (void)collisionWithWalls"):
+        view_controller.find("- (void)update", view_controller.find("- (void)collisionWithWalls"))
+    ]
+    wall_collision_index = wall_method.find("if (CGRectIntersectsRect(frame, image.frame)) {")
+    wall_collision_end_index = wall_method.find("\n       }", wall_collision_index)
+    wall_resolution_index = wall_method.find("self.pacmanYVelocity = -(self.pacmanYVelocity / 2.0);")
+    wall_frame_refresh_index = wall_method.find("frame = [self candidatePacmanFrame];", wall_resolution_index)
+    require(wall_collision_index != -1 and wall_resolution_index != -1 and
+            wall_resolution_index < wall_frame_refresh_index < wall_collision_end_index,
+            "wall collision handling must refresh the candidate frame after rollback before checking later walls",
+            failures)
     require(not re.search(r"\b(?:NSLog|printf)\s*\(", source),
             "Gameplay source must not use debug console logging",
             failures)
@@ -459,6 +474,12 @@ def main():
             "startMotionUpdates" in alert_motion_plan and
             "hostile mutations" in alert_motion_plan.lower(),
             "collision-alert motion plan must record completed pause/resume verification",
+            failures)
+    require("status: completed" in wall_frame_refresh_plan and
+            "candidate frame" in wall_frame_refresh_plan.lower() and
+            "later wall" in wall_frame_refresh_plan.lower() and
+            "hostile mutations" in wall_frame_refresh_plan.lower(),
+            "wall frame refresh plan must record completed verification",
             failures)
     require("docs/plans/2026-06-16-executable-motion-validation-tests.md" in readme and
             "executable C" in readme,

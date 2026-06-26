@@ -39,7 +39,7 @@ Helpful reports include:
 - The accelerometer availability guard must reject unsupported hardware before
   motion startup mutates generation or timing state.
 - Collision alerts should stay gated while visible so repeated collision frames do not stack duplicate modal prompts. Failure collision handling should apply a velocity reset and stop accelerometer delivery before prompting; motion startup must reject visible alerts, and dismissal should clear the alert guard and reset the frame clock before resuming. This alert pause keeps both gameplay and sensor work suspended. Previous position initialization should keep wall-collision rollback aligned with the starting point, while win completion must keep motion stopped after the exit alert.
-- Boundary and wall constraints should be resolved before exit and ghost outcomes, which must use the corrected candidate frame and stop after a terminal win.
+- Boundary and wall constraints should be resolved before exit and ghost outcomes. Each wall rollback must refresh candidate geometry before later walls are checked; outcomes must use the corrected candidate frame and stop after a terminal win.
 - `make check` runs a static baseline that guards image/XIB references, plist/scheme metadata, Xcode project wiring, shell syntax, source inventory, and local-only gameplay behavior when Xcode is unavailable.
 - GitHub Actions runs the same static baseline with Python 3.12 for pushes and
   pull requests.

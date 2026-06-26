@@ -49,6 +49,8 @@
 - Keep collision alerts as a sensor lifecycle boundary: visible alerts reject
   motion startup, ghost collisions stop the active stream, and dismissal clears
   the guard before restarting non-terminal gameplay.
+- Refresh wall-collision geometry after each rollback so later walls are checked
+  against the corrected candidate frame rather than stale pre-collision state.
 - `build.sh` should stay valid for `/bin/sh` because CI and local shells may not invoke bash, and Xcode DerivedData should stay temp-scoped unless explicitly overridden.
 - This looks like an Apple platform project or sample. Xcode, Swift, CocoaPods, and deployment target versions may need to match the original project era.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
