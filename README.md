@@ -56,7 +56,7 @@ The checked-in project has no external dependency manifest. Use Xcode for full b
 - Open `Maze.xcodeproj` in Xcode, choose the sole shared `Maze` scheme, and run
   it on a compatible simulator or device.
 - Run `./build.sh` when the required platform toolchain is installed. On hosts without Xcode, the script exits cleanly after reporting that the Xcode build was skipped. Xcode DerivedData stays in a temp directory unless `DERIVED_DATA_DIR` is set.
-- This is a local game sample with XIB-wired image assets and CoreMotion movement. The accelerometer availability guard rejects unsupported hardware before motion startup state changes. Non-finite or overflow-prone motion samples are rejected before each valid accelerometer sample is assigned and integrated together on the main thread. Gameplay updates clamp the frame time delta before applying accelerometer velocity, resolve boundary and wall constraints before evaluating the corrected collision frame, stop outcome checks after a win, gate collision alerts while visible, and reset the frame clock after alerts. Do not add accounts, analytics, persistence, upload, or network behavior without a dedicated design and security review.
+- This is a local game sample with XIB-wired image assets and CoreMotion movement. The accelerometer availability guard rejects unsupported hardware before motion startup state changes. Non-finite or overflow-prone motion samples are rejected before each valid accelerometer sample is assigned and integrated together on the main thread. Gameplay updates clamp the frame time delta before applying accelerometer velocity, refresh candidate geometry after each wall rollback, resolve boundary and wall constraints before evaluating the corrected outcome frame, stop outcome checks after a win, gate collision alerts while visible, and reset the frame clock after alerts. Do not add accounts, analytics, persistence, upload, or network behavior without a dedicated design and security review.
 
 ## Testing and Verification
 
@@ -77,7 +77,7 @@ The baseline first compiles and runs executable C tests against the same finite
 motion-sample predicate used by the CoreMotion callback. It then runs
 `scripts/check-baseline.py`, validates POSIX shell syntax for `build.sh`, parses
 plist/XIB/scheme XML, checks PNG resources, verifies Xcode project references,
-checks corrected collision ordering and candidate-frame use, accelerometer
+checks corrected collision ordering, per-wall candidate-frame refresh, accelerometer
 lifecycle and main-thread handoff, collision alert gating, failure velocity
 reset behavior, previous position initialization, win completion update guards,
 alert pause behavior, alert frame clock reset behavior, frame time delta
@@ -118,6 +118,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Ghost collision alerts stop accelerometer delivery while the modal prompt is
   visible. Dismissal clears the alert guard, refreshes the frame clock, and then
   resumes motion; terminal win alerts remain stopped.
+- Wall collision rollback refreshes the candidate frame before later walls are
+  evaluated, preventing stale geometry from applying extra collision responses.
 - `build.sh` should stay valid for `/bin/sh` because CI and local shells may not invoke bash.
 
 ## Maintenance Notes
@@ -140,6 +142,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   app lifecycle ownership and stale queued motion rejection.
 - See `docs/plans/2026-06-25-pause-motion-during-alerts.md` for collision-alert
   sensor suspension and guarded dismissal resume behavior.
+- See `docs/plans/2026-06-26-refresh-wall-collision-frame.md` for per-wall
+  corrected-frame evaluation.
 - See `docs/plans/2026-06-10-ci-baseline.md` for the GitHub Actions static
   baseline.
 - See `docs/plans/2026-06-09-make-gate-aliases.md` for the local gate alias guardrail.

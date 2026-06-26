@@ -1,5 +1,32 @@
 # Changes
 
+## 2026-06-26 - P2 - Refresh wall collision geometry
+
+### Summary
+Recomputed Pac-Man's candidate frame after each wall rollback so subsequent
+walls are evaluated against corrected geometry instead of the stale incoming
+frame.
+
+### Work completed
+- Preserved the existing rollback axis and damped velocity behavior.
+- Added a portable source contract for post-rollback frame refresh ordering.
+- Synchronized gameplay, security, and maintenance guidance.
+
+### Validation
+- The new contract failed before implementation on the single captured frame.
+- Local and hosted validation evidence is recorded in the completed plan.
+
+### Bugs / findings
+- P2: one update overlapping multiple wall images could apply later collision
+  responses using geometry captured before the first rollback.
+
+### Blockers
+- Local `xcodebuild` is unavailable; hosted macOS CI remains authoritative for
+  Objective-C compilation.
+
+### Next action
+- Merge only after exact-head review and hosted checks pass.
+
 ## 2026-06-25 05:18 - P2 - Pause motion delivery during collision alerts
 
 ### Summary

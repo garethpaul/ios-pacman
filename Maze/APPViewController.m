@@ -248,6 +248,8 @@
                 _currentPoint.y = self.previousPoint.y;
                 self.pacmanYVelocity = -(self.pacmanYVelocity / 2.0);
             }
+
+            frame = [self candidatePacmanFrame];
         
        }
     

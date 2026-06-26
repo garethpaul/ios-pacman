@@ -28,6 +28,7 @@ Priority:
 - Gate collision alerts so repeated frames do not stack modal alerts
 - Reset movement velocity after failure collisions send the player to start
 - Keep previous position initialized for wall-collision rollback
+- Refresh candidate geometry after each wall rollback before checking later walls
 - Resolve physical constraints before evaluating one corrected outcome frame
 - Stop ghost outcome checks after a terminal win
 - Keep win completion as a terminal update guard after the exit alert appears
@@ -68,7 +69,8 @@ Current baseline: `make lint`, `make test`, `make build`, and `make check` run
 the unsigned app for a generic iOS simulator. The baseline verifies `build.sh`,
 plist/XIB/scheme XML, image resources, Xcode project references, accelerometer
 lifecycle and main-thread handoff guardrails, non-finite or overflow-prone motion
-sample rejection, frame time delta clamping, collision alert gating, failure
+sample rejection, frame time delta clamping, per-wall candidate-frame refresh,
+collision alert gating, failure
 velocity reset behavior, previous position initialization, win completion update
 guarding, and alert pause behavior, with local-only gameplay and alert frame
 clock reset behavior, with no debug logging, network, analytics, upload, or
