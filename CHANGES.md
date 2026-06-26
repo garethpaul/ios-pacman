@@ -1,5 +1,39 @@
 # Changes
 
+## 2026-06-26 13:29 PDT - P1 - Require active app motion startup
+
+### Summary
+Motion startup requires UIApplicationStateActive at the controller boundary.
+
+### Work completed
+- Added the active-state check to the shared `startMotionUpdates` guard so app
+  delegate resume and alert dismissal cannot bypass lifecycle ownership.
+- Kept the guard ahead of motion generation, frame clock, and callback startup.
+- Added maintained source, documentation, and completed-plan contracts.
+
+### Validation
+- Red phase: the static baseline rejected the missing controller-owned active-state guard.
+- `make check` passed the executable C harness and static baseline;
+  `xcodebuild` was unavailable locally and skipped explicitly.
+- Two isolated hostile mutations removing the active-state guard or its
+  documented contract were rejected.
+- Both hosted baseline jobs passed; CodeQL Actions, C/C++, and Python analyses
+  also passed.
+- `git diff --check` passed.
+- Codex review targeted `origin/master` but failed HTTP 401 before analysis;
+  immutable manual review found no actionable issue.
+
+### Bugs / findings
+- P1: direct callers such as alert dismissal could request motion restart after
+  lifecycle callbacks had already paused the inactive application.
+
+### Blockers
+- Hosted macOS CI remains authoritative for Objective-C/UIKit compilation.
+- External Codex review authentication remains unavailable.
+
+### Next action
+- Open the PR, run Codex review, and merge only after hosted checks pass.
+
 ## 2026-06-26 - P2 - Refresh wall collision geometry
 
 ### Summary

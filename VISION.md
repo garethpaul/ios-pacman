@@ -19,6 +19,7 @@ Priority:
 - Keep the screenshot and README aligned with app behavior
 - Maintain the build script and Xcode project structure
 - Keep accelerometer updates bounded to the active app lifecycle
+- Motion startup requires UIApplicationStateActive at the controller boundary.
 - Stop accelerometer delivery while collision alerts own the game screen, and
   resume only after dismissal clears the alert guard
 - Keep the accelerometer availability guard ahead of motion startup state
